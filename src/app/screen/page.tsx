@@ -88,17 +88,17 @@ export default function ScreenPage() {
     });
 
     // 기존 메시지들을 받는 이벤트
-    socket.on('existing-messages', (existingMessages) => {
+    socket.on('existing-messages', (existingMessages: { id: string; text: string; timestamp: string }[]) => {
       console.log('기존 메시지들 수신:', existingMessages.length);
-      existingMessages.forEach((msgData: any) => {
+      existingMessages.forEach((msgData) => {
         addMessage(msgData.text);
       });
     });
 
     // 기존 그림들을 받는 이벤트
-    socket.on('existing-drawings', (existingDrawings) => {
+    socket.on('existing-drawings', (existingDrawings: { id: string; imageData: string; timestamp: string }[]) => {
       console.log('기존 그림들 수신:', existingDrawings.length);
-      existingDrawings.forEach((drawData: any) => {
+      existingDrawings.forEach((drawData) => {
         addDrawing(drawData.imageData);
       });
     });
