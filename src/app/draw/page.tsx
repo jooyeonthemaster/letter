@@ -189,7 +189,7 @@ export default function DrawPage() {
         </div>
         
         <div className="text-center mt-4 text-gray-600">
-          마우스나 터치로 그림을 그리고 "스크린에 표시하기"를 눌러보세요!
+          마우스나 터치로 그림을 그리고 &quot;스크린에 표시하기&quot;를 눌러보세요!
         </div>
       </div>
     </div>
