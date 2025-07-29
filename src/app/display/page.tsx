@@ -87,6 +87,22 @@ export default function DisplayPage() {
       addDrawing(data.imageData);
     });
 
+    // 기존 메시지들을 받는 이벤트
+    socket.on('existing-messages', (existingMessages) => {
+      console.log('기존 메시지들 수신:', existingMessages.length);
+      existingMessages.forEach((msgData: any) => {
+        addMessage(msgData.text);
+      });
+    });
+
+    // 기존 그림들을 받는 이벤트
+    socket.on('existing-drawings', (existingDrawings) => {
+      console.log('기존 그림들 수신:', existingDrawings.length);
+      existingDrawings.forEach((drawData: any) => {
+        addDrawing(drawData.imageData);
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log('디스플레이: Socket 연결 해제됨');
     });
@@ -97,7 +113,8 @@ export default function DisplayPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black overflow-hidden relative">
+    <div className="min-h-screen bg-black overflow-hidden relative" 
+         style={{ minHeight: '100vh', height: '100dvh' }}>
       {/* 배경 그라디언트 */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-black"></div>
       
@@ -149,7 +166,7 @@ export default function DisplayPage() {
                 ease: "easeInOut"
               }
             }}
-            className={`absolute text-4xl font-bold ${message.color} drop-shadow-2xl pointer-events-none select-none`}
+            className={`absolute text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold ${message.color} drop-shadow-2xl pointer-events-none select-none`}
             style={{
               left: `${message.x}vw`,
               top: `${message.y}vh`,
@@ -217,11 +234,9 @@ export default function DisplayPage() {
             <img 
               src={drawing.imageData} 
               alt="User drawing"
-              className="rounded-lg shadow-2xl border-4 border-white/20"
+              className="rounded-lg shadow-2xl border-4 border-white/20 w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-64 lg:h-64 object-contain"
               style={{
-                filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.3))',
-                maxWidth: '300px',
-                maxHeight: '300px'
+                filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.3))'
               }}
             />
           </motion.div>
