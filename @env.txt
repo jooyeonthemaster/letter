@@ -1,0 +1,17 @@
+# 인터랙티브 미디어 아트 프로젝트 환경변수
+
+# Socket.io 서버 URL (개발 환경)
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
+
+# 개발 환경 설정
+NODE_ENV=development
+
+# 애플리케이션 설정
+NEXT_PUBLIC_APP_NAME=Interactive Media Art
+NEXT_PUBLIC_APP_VERSION=1.0.0
+
+# 포트 설정
+PORT=3000
+
+# Socket.io 설정
+SOCKET_CORS_ORIGIN=*
