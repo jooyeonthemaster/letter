@@ -36,8 +36,30 @@ export default function TouchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 w-full max-w-2xl shadow-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex flex-col justify-center p-4">
+      {/* 상단 시 인용구 영역 */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 mb-6 max-w-2xl mx-auto shadow-xl">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">혼모노</h3>
+            <p className="text-sm text-gray-600">성해나 · 창비 (2025)</p>
+          </div>
+        </div>
+        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line max-h-32 overflow-y-auto">
+          스무드{'\n'}
+          사람들과 마찬가지로 나 역시도 그런 매끈한 세계를 추앙했다.{'\n\n'}
+          혼모노{'\n'}
+          가벼워진다. 모든 것에서 놓여나듯. 이제야 진짜 가짜가 된 듯.{'\n\n'}
+          구의 집: 갈월동 98번지{'\n'}
+          무형의 공간에 선을 더하고 면을 채우고 종국에는 인간까지 집어넣는 일.{'\n\n'}
+          우호적 감정{'\n'}
+          알렉스, 너무 애쓰지 마요. 애쓰면 더 멀어져.{'\n\n'}
+          메탈{'\n'}
+          이 시절이 영원할 것처럼 그들은 짙푸른 밤을 내달렸다.
+        </div>
+      </div>
+
+      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 w-full max-w-2xl mx-auto shadow-2xl">
         <h1 className="text-4xl font-bold text-center text-gray-800 mb-8">
           메시지를 입력하세요
         </h1>
