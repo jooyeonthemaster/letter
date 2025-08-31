@@ -36,9 +36,9 @@ export default function TouchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex flex-col justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex flex-col p-4 pt-24">
       {/* 상단 시 인용구 영역 */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 mb-6 max-w-2xl mx-auto shadow-xl">
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 mb-6 max-w-2xl mx-auto shadow-xl mt-8">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-medium text-gray-900">혼모노</h3>
@@ -59,7 +59,7 @@ export default function TouchPage() {
         </div>
       </div>
 
-      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 w-full max-w-2xl mx-auto shadow-2xl">
+      <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 w-full max-w-2xl mx-auto shadow-2xl flex-1 flex flex-col justify-center">
         <h1 className="text-4xl font-bold text-center text-gray-800 mb-8">
           메시지를 입력하세요
         </h1>
