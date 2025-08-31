@@ -6,7 +6,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
 
 export default function DrawPage() {
-  const sigCanvasRef = useRef<any>(null);
+  const sigCanvasRef = useRef<SignatureCanvas>(null);
   const [brushSize, setBrushSize] = useState(3);
   const [brushColor, setBrushColor] = useState('#1a1a1a');
   const [isConnected, setIsConnected] = useState(false);
@@ -14,7 +14,15 @@ export default function DrawPage() {
   const [isEraserMode, setIsEraserMode] = useState(false);
   const [eraserSize, setEraserSize] = useState(10);
   const [showBookList, setShowBookList] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<any>(null);
+  const [selectedBook, setSelectedBook] = useState<{
+    id: number;
+    author: string;
+    authorEng: string;
+    title: string;
+    publisher: string;
+    year: number;
+    quotes: string;
+  } | null>(null);
 
 
 
@@ -95,8 +103,8 @@ export default function DrawPage() {
     { id: 6, author: '윤은성', authorEng: 'Eunseong Yoon', title: '유리 광장에서', publisher: '도서출판 빠마', year: 2024, quotes: '우재\n너 없이 오직 다짐들과 시간들뿐이네.\n\n둑과 빛과 물의 시\n사라질 것 같으면 돌을 물에 던지듯 이야기를 만들었다\n\n봄 방학\n이번 겨울에는 나의 도시에 한번 다녀가세요.\n\n모르는 일들로부터\n그럼 내 숲의 초록빛도 한 번씩 밖으로 내비춰지고\n\n좁고 긴 옷\n내가 나를 증명하지 않는 것이 노래에 가깝다고 해요' },
     { id: 7, author: '이수지', authorEng: 'Suzy Lee', title: '춤을 추었어', publisher: '안그라픽스', year: 2024, quotes: '뛰어오르는 물고기\n나비의 날갯짓\n땅 밑 여행\n꽃의 환대\n모두 춤을 추었어' },
     { id: 8, author: '장이지', authorEng: 'Jang I-Ji', title: '오리배가 지나간 호수의 파랑', publisher: '아침달', year: 2025, quotes: '무지개\n그것이 아직 덜 쓰였다는 점에서 얼마간 지우고 있는 것과 구분할 수 없다\n\n헤어지는 중\n헤어짐은 만남이야, 바보야\n\n혼자만 찬란한 것\n돌아누우면, 아무도 없구나\n\n칠월\n나와 세계를 송두리째 바꾸는 꿈\n\nWhen You Wish Upon A Star\n너와 나 사이에 하얗게 눈이 내려 쌓였으면······' },
-    { id: 9, author: '김성중', authorEng: 'Kim Seong Joong', title: '화성의 아이', publisher: '문학동네', year: 2024, quotes: '장소를 묻는 건 우리가 누구인지 묻는 것과 같아.\n무언가를 간절히 기다리는 마음, 무엇인지도 모르는 채 간절해지기만 하는 마음.\n내 삶은 인간을 사랑하는 것과 사랑하지 않는 것 사이의 투쟁이었다.\n처음부터 나는 그 아이를 사랑하지 않을 자신이 없었다.\n우리는 \'애정\'이라는 말을 알았고 \'그리움\'이라는 말도 알았다.' },
-    { id: 10, author: '이금이', authorEng: 'Lee Geum-yi', title: '알로하, 나의 엄마들', publisher: '창비', year: 2020, quotes: '지 결론이 뭔지 압니꺼? 사람은 다 똑같다는 기라예.\n\'내 딸은 좋은 시상에서 내보다 나은 삶을 살아야 한다.\'\n함께 조선을 떠나온 자신들은 아프게, 기쁘게, 뜨겁게 파도를 넘어서며 살아갈 것이다.\n세상에 멋진 싸움이라는 거이 없다.\n하와이에 산다면 이런 비쯤 아무렇지 않게 맞아야 한다.' },
+    { id: 9, author: '김성중', authorEng: 'Kim Seong Joong', title: '화성의 아이', publisher: '문학동네', year: 2024, quotes: '장소를 묻는 건 우리가 누구인지 묻는 것과 같아.\n무언가를 간절히 기다리는 마음, 무엇인지도 모르는 채 간절해지기만 하는 마음.\n내 삶은 인간을 사랑하는 것과 사랑하지 않는 것 사이의 투쟁이었다.\n처음부터 나는 그 아이를 사랑하지 않을 자신이 없었다.\n우리는 "애정"이라는 말을 알았고 "그리움"이라는 말도 알았다.' },
+    { id: 10, author: '이금이', authorEng: 'Lee Geum-yi', title: '알로하, 나의 엄마들', publisher: '창비', year: 2020, quotes: "지 결론이 뭔지 압니꺼? 사람은 다 똑같다는 기라예.\n'내 딸은 좋은 시상에서 내보다 나은 삶을 살아야 한다.'\n함께 조선을 떠나온 자신들은 아프게, 기쁘게, 뜨겁게 파도를 넘어서며 살아갈 것이다.\n세상에 멋진 싸움이라는 거이 없다.\n하와이에 산다면 이런 비쯤 아무렇지 않게 맞아야 한다." },
     { id: 11, author: '이제니', authorEng: 'Lee Jenny', title: '그리하여 흘려 쓴 것들', publisher: '문학과지성사', year: 2019, quotes: '남겨진 이후에\n너는 말할 수 없는 말을 내뱉고 읽히지 않는 문장이 되었다.\n\n지금 우리가 언어로 말하는 여러 가지 이야기들\n꾸며낸 이야기가 가본 적 없는 거리의 풍경을 불러들인다.\n\n밤에 의한 불\n너의 얼굴은 두 번 다시 볼 수 없다는 점에서 아름답고.\n\n나무 공에 의지하여\n너와 나 외에 모든 것이 흐르고 있는 들판이 있다.\n\n발화 연습 문장\n―이미 찢겼지만 다시 찢겨야만 한다\n-보이지 않는 글자를 아무도 모르는 발음으로 읽어 내려갔다.' },
     { id: 12, author: '황여정', authorEng: 'Hwang Yeo Jung', title: '숨과 입자', publisher: '창비', year: 2024, quotes: '내 안에서 움트고 작동되는 마음이라고 해서 그것의 본질을 다 알 수는 없는 일이다. 의식은 언제나 마음보다 늦다.\n모든 일에는 순서가 있는 법이고, 제삼자의 궁금증 해소가 당자의 애도보다 앞서는 일일 수는 없었다.\n본래 나의 것이 아니었던 것들의 철수.\n나는 살아 있는 사람이 아니라 살아남은 사람이다.\n다가가보는 수밖에 없지 않겠어? 그걸 원한다면.' },
     { id: 13, author: '강지영', authorEng: 'Kang Ji-young', title: '심여사는 킬러', publisher: '네오픽션', year: 2023, quotes: '이제 나는 보통의 아줌마가 아니다. 킬러다.\n부러진 칼끝이 가슴 어딘가를 건드리는 모양이었다.\n사람은 미치지 않기 위해 어떤 일이든 파고들게 되어 있다.\n스마일입니다.\n우리는 칼이 부딪히는 소리에 발을 맞춰 밀림 같은 세상을 향해 어깨를 늘어뜨리고 걸어 나가야 했다.' },
@@ -147,108 +155,164 @@ export default function DrawPage() {
           </p>
         </motion.div>
 
-        {/* 상단 고정 탭 */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm"
-        >
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* 도구 패널 토글 */}
-              <button
-                onClick={() => setShowTools(!showTools)}
-                className={`p-2 rounded-lg transition-all duration-300 ${
-                  showTools 
-                    ? 'bg-gray-900 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <motion.div
-                  animate={{ rotate: showTools ? 180 : 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {showTools ? '✕' : '🎨'}
-                </motion.div>
-              </button>
-              
-              {/* 책 목록 버튼 */}
-              <button
-                onClick={() => setShowBookList(!showBookList)}
-                className={`px-4 py-2 rounded-lg transition-all duration-300 font-medium ${
-                  showBookList 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                📚 책 목록 보기
-              </button>
-            </div>
 
-            {/* 선택된 책 정보 */}
-            {selectedBook && (
-              <div className="text-right">
-                <div className="text-sm font-medium text-gray-900">{selectedBook.title}</div>
-                <div className="text-xs text-gray-500">{selectedBook.author} · {selectedBook.publisher}</div>
-              </div>
-            )}
-          </div>
+
+                {/* 통합 플로팅 버튼들 */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="fixed top-20 left-6 z-50 space-y-3"
+        >
+          {/* 도구 패널 버튼 */}
+          <button
+            onClick={() => setShowTools(true)}
+            className="p-4 rounded-xl shadow-lg border-2 bg-gray-100/90 text-gray-700 border-gray-200 hover:bg-gray-200/90 transition-all duration-200 backdrop-blur-sm"
+            title="필기 도구"
+          >
+            🎨
+          </button>
+
+          {/* 책 목록 버튼 */}
+          <button
+            onClick={() => setShowBookList(true)}
+            className="p-4 rounded-xl shadow-lg border-2 bg-blue-100/90 text-blue-700 border-blue-300 hover:bg-blue-200/90 transition-all duration-200 backdrop-blur-sm"
+            title="책 목록 보기"
+          >
+            📚
+          </button>
+          
+          {/* 모드 전환 버튼 */}
+          <button
+            onClick={toggleEraserMode}
+            className={`p-4 rounded-xl shadow-lg border-2 transition-all duration-200 backdrop-blur-sm font-medium ${
+              isEraserMode 
+                ? 'bg-red-100/90 text-red-700 border-red-300' 
+                : 'bg-blue-100/90 text-blue-700 border-blue-300'
+            }`}
+            title={isEraserMode ? '지우개 모드' : '쓰기 모드'}
+          >
+            {isEraserMode ? '🧹' : '✍️'}
+          </button>
+          
+          {/* 전체 지우기 버튼 */}
+          <button
+            onClick={clearCanvas}
+            className="p-4 rounded-xl shadow-lg border-2 bg-gray-100/90 text-gray-700 border-gray-200 hover:bg-gray-200/90 transition-all duration-200 backdrop-blur-sm"
+            title="전체 지우기"
+          >
+            🗑️
+          </button>
         </motion.div>
 
-        {/* 플로팅 액션 버튼들 (도구 패널이 숨겨졌을 때) */}
+        {/* 도구 패널 모달 */}
         <AnimatePresence>
-          {!showTools && (
-            <>
-              {/* 연결 상태 인디케이터 */}
+          {showTools && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowTools(false)}
+            >
               <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.4 }}
-                className="fixed top-4 right-4 z-50"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-gray-200">
-          <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className="text-xs text-gray-600">
-                      {isConnected ? '연결됨' : '연결 끊김'}
-                    </span>
+                <div className="p-6 border-b border-gray-200">
+                  <h2 className="text-xl font-bold text-gray-900">필기 도구</h2>
+                  <p className="text-gray-600 mt-1">붓과 색상을 선택해보세요</p>
+                </div>
+                
+                                <div className="p-8">
+                  <div className="grid grid-cols-3 gap-8">
+                    {/* 도구 모드 선택 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-4">도구 모드</label>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setIsEraserMode(false)}
+                          className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
+                            !isEraserMode 
+                              ? 'border-gray-900 bg-gray-50 text-gray-900' 
+                              : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                          }`}
+                        >
+                          <div className="text-2xl mb-2">✍️</div>
+                          <div className="text-sm">쓰기</div>
+                        </button>
+                        <button
+                          onClick={() => setIsEraserMode(true)}
+                          className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
+                            isEraserMode 
+                              ? 'border-red-500 bg-red-50 text-red-700' 
+                              : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                          }`}
+                        >
+                          <div className="text-2xl mb-2">🧹</div>
+                          <div className="text-sm">지우개</div>
+                        </button>
+                      </div>
+          </div>
+          
+                    {/* 붓 크기 또는 지우개 크기 선택 */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-4">
+                        {isEraserMode ? '지우개 크기' : '붓 크기'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(isEraserMode ? eraserSizes : brushSizes).map((tool) => (
+                <button
+                            key={tool.size}
+                            onClick={() => isEraserMode ? setEraserSize(tool.size) : setBrushSize(tool.size)}
+                            className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                              (isEraserMode ? eraserSize : brushSize) === tool.size 
+                                ? `border-${isEraserMode ? 'red' : 'gray'}-${isEraserMode ? '500' : '900'} bg-${isEraserMode ? 'red' : 'gray'}-50` 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="text-sm text-gray-600 mb-2">{tool.name}</div>
+                            <div 
+                              className={`w-full rounded-full mx-auto ${isEraserMode ? 'bg-red-400' : 'bg-gray-900'}`}
+                              style={{ height: `${Math.max(tool.size / 3, 2)}px` }}
+                            />
+                          </button>
+              ))}
+            </div>
+          </div>
+          
+                    {/* 먹 색상 선택 (쓰기 모드일 때만) */}
+                    {!isEraserMode && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-4">먹 색상</label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {inkColors.map((ink) => (
+                            <button
+                              key={ink.color}
+                              onClick={() => setBrushColor(ink.color)}
+                              className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                                brushColor === ink.color 
+                                  ? 'border-gray-900 bg-gray-50' 
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="text-xs text-gray-600 mb-2">{ink.name}</div>
+                              <div 
+                                className="w-8 h-8 rounded-full mx-auto border border-gray-300"
+                                style={{ backgroundColor: ink.color }}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
-
-              {/* 액션 버튼들 */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.4 }}
-                className="fixed top-20 left-6 z-50 space-y-3"
-              >
-                {/* 모드 전환 버튼 */}
-                <button
-                  onClick={toggleEraserMode}
-                  className={`p-4 rounded-xl shadow-lg border-2 transition-all duration-200 backdrop-blur-sm font-medium ${
-                    isEraserMode 
-                      ? 'bg-red-100/90 text-red-700 border-red-300' 
-                      : 'bg-blue-100/90 text-blue-700 border-blue-300'
-                  }`}
-                  title={isEraserMode ? '지우개 모드' : '쓰기 모드'}
-                >
-                  {isEraserMode ? '🧹' : '✍️'}
-                </button>
-                
-                {/* 전체 지우기 버튼 */}
-                <button
-                  onClick={clearCanvas}
-                  className="p-4 rounded-xl shadow-lg border-2 bg-gray-100/90 text-gray-700 border-gray-200 hover:bg-gray-200/90 transition-all duration-200 backdrop-blur-sm"
-                  title="전체 지우기"
-                >
-                  🗑️
-                </button>
-              </motion.div>
-            </>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -297,167 +361,48 @@ export default function DrawPage() {
           )}
         </AnimatePresence>
 
-        {/* 메인 콘텐츠 */}
-        <div className="flex-1 max-w-7xl mx-auto w-full px-6 pb-8 pt-20">
-          <div className={`grid gap-8 h-full transition-all duration-500 ${showTools ? 'grid-cols-12' : 'grid-cols-1'}`}>
-            
-            {/* 도구 패널 */}
-            <AnimatePresence>
-              {showTools && (
-                <motion.div 
-                  initial={{ opacity: 0, x: -30, width: 0 }}
-                  animate={{ opacity: 1, x: 0, width: 'auto' }}
-                  exit={{ opacity: 0, x: -30, width: 0 }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                  className="col-span-12 lg:col-span-3"
-                >
-                            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-gray-100 h-fit">
-                <h3 className="text-xl font-light text-gray-900 mb-6 border-b border-gray-200 pb-3">
-                  필기 도구
-                </h3>
-
-                {/* 도구 모드 선택 */}
-                <div className="mb-6">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setIsEraserMode(false)}
-                      className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                        !isEraserMode 
-                          ? 'border-gray-900 bg-gray-50 text-gray-900' 
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
-                    >
-                      <div className="text-lg mb-1">✍️</div>
-                      <div className="text-xs">쓰기</div>
-                    </button>
-                    <button
-                      onClick={() => setIsEraserMode(true)}
-                      className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                        isEraserMode 
-                          ? 'border-red-500 bg-red-50 text-red-700' 
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                      }`}
-                    >
-                      <div className="text-lg mb-1">🧹</div>
-                      <div className="text-xs">지우개</div>
-                    </button>
-                  </div>
-                </div>
-                
-                {/* 붓 크기 또는 지우개 크기 선택 */}
-                <div className="mb-8">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    {isEraserMode ? '지우개 크기' : '붓 크기'}
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(isEraserMode ? eraserSizes : brushSizes).map((tool) => (
-                      <button
-                        key={tool.size}
-                        onClick={() => isEraserMode ? setEraserSize(tool.size) : setBrushSize(tool.size)}
-                        className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                          (isEraserMode ? eraserSize : brushSize) === tool.size 
-                            ? `border-${isEraserMode ? 'red' : 'gray'}-${isEraserMode ? '500' : '900'} bg-${isEraserMode ? 'red' : 'gray'}-50` 
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="text-xs text-gray-600 mb-1">{tool.name}</div>
-                        <div 
-                          className={`w-full rounded-full mx-auto ${isEraserMode ? 'bg-red-400' : 'bg-gray-900'}`}
-                          style={{ height: `${Math.max(tool.size / 3, 2)}px` }}
-                        />
-                      </button>
-                    ))}
-                  </div>
-          </div>
-          
-                                {/* 먹 색상 선택 (쓰기 모드일 때만) */}
-                {!isEraserMode && (
-                  <div className="mb-8">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">먹 색상</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {inkColors.map((ink) => (
-                <button
-                          key={ink.color}
-                          onClick={() => setBrushColor(ink.color)}
-                          className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                            brushColor === ink.color 
-                              ? 'border-gray-900 bg-gray-50' 
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="text-xs text-gray-600 mb-2">{ink.name}</div>
-                          <div 
-                            className="w-8 h-8 rounded-full mx-auto border border-gray-300"
-                            style={{ backgroundColor: ink.color }}
-                          />
-                        </button>
-              ))}
-            </div>
-          </div>
-                )}
-
-                {/* 지우개 모드 안내 */}
-                {isEraserMode && (
-                  <div className="mb-8 p-4 bg-red-50 rounded-xl border border-red-200">
-                    <div className="text-center">
-                      <div className="text-2xl mb-2">🧹</div>
-                      <h4 className="font-medium text-red-800 mb-1">지우개 모드</h4>
-                      <p className="text-sm text-red-600">
-                        캔버스를 터치하면 해당 부분이 지워집니다
-                      </p>
-                    </div>
-                  </div>
-                )}
-          
-                                {/* 액션 버튼들 */}
-                <div className="space-y-3">
-                  <button
-                    onClick={toggleEraserMode}
-                    className={`w-full py-3 rounded-xl transition-all duration-200 font-medium ${
-                      isEraserMode 
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200 border-2 border-red-300' 
-                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-2 border-blue-300'
-                    }`}
-                  >
-                    {isEraserMode ? '🧹 지우개 모드' : '✍️ 쓰기 모드'}
-                  </button>
-            <button
-              onClick={clearCanvas}
-                    className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl hover:bg-gray-200 transition-colors duration-200 font-medium"
+        {/* 선택된 책 인용문 영역 (헤더 아래) */}
+        <AnimatePresence>
+          {selectedBook && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="pt-8 pb-4"
             >
-                    전체 지우기
-            </button>
+              <div className="flex-1 max-w-7xl mx-auto w-full px-6">
+                <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-gray-100">
+                  <div className="flex items-start justify-between mb-6">
+                    <div>
+                      <h3 className="text-xl font-medium text-gray-900">{selectedBook.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{selectedBook.author} · {selectedBook.publisher} ({selectedBook.year})</p>
+                    </div>
             <button
-              onClick={saveDrawing}
-              disabled={!isConnected}
-                    className="w-full bg-gray-900 text-white py-3 rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                  >
-                    {isConnected ? '편지 보내기' : '연결 중...'}
-                  </button>
-                </div>
-
-                {/* 연결 상태 */}
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className="text-xs text-gray-500">
-                      {isConnected ? '연결됨' : '연결 끊김'}
-                    </span>
+                      onClick={() => setSelectedBook(null)}
+                      className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+            >
+                      ✕
+            </button>
+                  </div>
+                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
+                    {selectedBook.quotes}
                   </div>
                 </div>
-                              </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-            {/* 편지지 캔버스 */}
+        {/* 메인 콘텐츠 */}
+        <div className={`flex-1 max-w-7xl mx-auto w-full px-6 pb-8 ${selectedBook ? 'pt-4' : 'pt-8'}`}>
+                      {/* 편지지 캔버스 */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className={showTools ? "col-span-12 lg:col-span-9" : "col-span-12"}
+              className="w-full"
             >
-              <div className={`relative h-full transition-all duration-500 ${showTools ? 'min-h-[600px]' : 'min-h-[calc(100vh-200px)]'}`}>
+              <div className="relative h-full min-h-[calc(100vh-200px)]">
                 {/* 편지지 배경 */}
                 <div className="absolute inset-0 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
                   {/* 종이 질감 효과 */}
@@ -492,26 +437,7 @@ export default function DrawPage() {
                     <div className="w-full h-full bg-gradient-to-bl from-gray-400 to-transparent rounded-bl-3xl" />
                   </div>
                   
-                                                      {/* 선택된 책 인용문 영역 */}
-                  {selectedBook && (
-                    <div className="relative z-10 p-6 border-b border-gray-100 bg-gray-50/50">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-900">{selectedBook.title}</h3>
-                          <p className="text-sm text-gray-600">{selectedBook.author} · {selectedBook.publisher} ({selectedBook.year})</p>
-                        </div>
-                        <button
-                          onClick={() => setSelectedBook(null)}
-                          className="p-1 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line max-h-32 overflow-y-auto">
-                        {selectedBook.quotes}
-                      </div>
-                    </div>
-                  )}
+                                    
 
                   {/* 편지지 헤더 */}
                   <div className="relative z-10 p-8 border-b border-gray-100">
@@ -545,16 +471,16 @@ export default function DrawPage() {
                           </span>
                         </div>
                         
-                        <button
-                          onClick={saveDrawing}
-                          disabled={!isConnected}
+            <button
+              onClick={saveDrawing}
+              disabled={!isConnected}
                           className="px-6 py-3 rounded-xl shadow-lg border-2 bg-gray-900 text-white border-gray-700 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium"
-                        >
+            >
                           <span className="text-lg">📤</span>
                           <span className="text-sm">편지 보내기</span>
             </button>
-                      </div>
-                    </div>
+          </div>
+        </div>
                   </div>
         
                   {/* 캔버스 영역 */}
@@ -567,7 +493,7 @@ export default function DrawPage() {
                         canvasProps={{
                           className: 'w-full h-full border-0 rounded-lg',
                           style: { 
-                            minHeight: showTools ? '450px' : 'calc(100vh - 300px)',
+                            minHeight: 'calc(100vh - 300px)',
                             background: 'transparent',
                             touchAction: 'none',
                             cursor: isEraserMode ? 'crosshair' : 'crosshair'
@@ -748,8 +674,8 @@ export default function DrawPage() {
                 </motion.div>
                 <h3 className="font-medium text-gray-900 mb-1">디지털 편지지</h3>
                 <p className="text-sm text-gray-600">전통과 미래의 만남</p>
-              </div>
-            </div>
+        </div>
+      </div>
           </div>
           </motion.div>
         )}
@@ -773,9 +699,8 @@ export default function DrawPage() {
               transition={{ duration: 1, repeat: Infinity, delay: 0.5 }}
               className="w-1 h-1 bg-purple-400 rounded-full"
             />
-        </div>
+          </div>
         </motion.div>
-      </div>
     </div>
   );
 }
