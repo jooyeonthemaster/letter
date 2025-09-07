@@ -1,0 +1,19 @@
+{
+  "name": "인터랙티브 미디어 아트",
+  "short_name": "미디어아트",
+  "description": "터치와 그리기로 만드는 살아있는 예술 공간",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#000000",
+  "theme_color": "#FFD700",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "scope": "/",
+  "categories": ["art", "entertainment", "productivity"]
+}

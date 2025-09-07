@@ -82,10 +82,11 @@ export default function DisplayPage() {
       addMessage(data.text);
     });
 
-    socket.on('new-drawing', (data) => {
-      console.log('새 그림 수신:', data);
-      addDrawing(data.imageData);
-    });
+    // 그림은 screen 페이지에서만 처리하도록 주석 처리
+    // socket.on('new-drawing', (data) => {
+    //   console.log('새 그림 수신:', data);
+    //   addDrawing(data.imageData);
+    // });
 
     // 기존 메시지들을 받는 이벤트
     socket.on('existing-messages', (existingMessages: { id: string; text: string; timestamp: string }[]) => {
@@ -95,13 +96,13 @@ export default function DisplayPage() {
       });
     });
 
-    // 기존 그림들을 받는 이벤트
-    socket.on('existing-drawings', (existingDrawings: { id: string; imageData: string; timestamp: string }[]) => {
-      console.log('기존 그림들 수신:', existingDrawings.length);
-      existingDrawings.forEach((drawData) => {
-        addDrawing(drawData.imageData);
-      });
-    });
+    // 기존 그림들도 screen 페이지에서만 처리하도록 주석 처리
+    // socket.on('existing-drawings', (existingDrawings: { id: string; imageData: string; timestamp: string }[]) => {
+    //   console.log('기존 그림들 수신:', existingDrawings.length);
+    //   existingDrawings.forEach((drawData) => {
+    //     addDrawing(drawData.imageData);
+    //   });
+    // });
 
     socket.on('disconnect', () => {
       console.log('디스플레이: Socket 연결 해제됨');

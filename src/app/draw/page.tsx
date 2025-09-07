@@ -8,7 +8,7 @@ import { connectSocket, disconnectSocket } from '@/lib/socket';
 export default function DrawPage() {
   const sigCanvasRef = useRef<SignatureCanvas>(null);
   const [brushSize, setBrushSize] = useState(3);
-  const [brushColor, setBrushColor] = useState('#1a1a1a');
+  const [brushColor, setBrushColor] = useState('#FFFFFF');
   const [isConnected, setIsConnected] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [isEraserMode, setIsEraserMode] = useState(false);
@@ -23,6 +23,7 @@ export default function DrawPage() {
     year: number;
     quotes: string;
   } | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
 
 
@@ -56,6 +57,75 @@ export default function DrawPage() {
     setIsEraserMode(!isEraserMode);
   };
 
+  // 전체화면 토글 함수
+  const toggleFullscreen = () => {
+    const elem = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+      mozRequestFullScreen?: () => Promise<void>;
+      msRequestFullscreen?: () => Promise<void>;
+    };
+    
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element;
+      mozFullScreenElement?: Element;
+      webkitExitFullscreen?: () => Promise<void>;
+      mozCancelFullScreen?: () => Promise<void>;
+      msExitFullscreen?: () => Promise<void>;
+    };
+    
+    if (!document.fullscreenElement && 
+        !doc.webkitFullscreenElement && 
+        !doc.mozFullScreenElement) {
+      // 전체화면 진입
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) { // Safari/iOS
+        elem.webkitRequestFullscreen();
+      } else if (elem.mozRequestFullScreen) { // Firefox
+        elem.mozRequestFullScreen();
+      } else if (elem.msRequestFullscreen) { // IE/Edge
+        elem.msRequestFullscreen();
+      }
+    } else {
+      // 전체화면 종료
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (doc.webkitExitFullscreen) { // Safari/iOS
+        doc.webkitExitFullscreen();
+      } else if (doc.mozCancelFullScreen) { // Firefox
+        doc.mozCancelFullScreen();
+      } else if (doc.msExitFullscreen) { // IE/Edge
+        doc.msExitFullscreen();
+      }
+    }
+  };
+
+  // 전체화면 상태 감지
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const doc = document as Document & {
+        webkitFullscreenElement?: Element;
+        mozFullScreenElement?: Element;
+      };
+      
+      setIsFullscreen(
+        !!(document.fullscreenElement || 
+           doc.webkitFullscreenElement || 
+           doc.mozFullScreenElement)
+      );
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   const saveDrawing = () => {
     if (!sigCanvasRef.current || !isConnected) return;
 
@@ -68,14 +138,14 @@ export default function DrawPage() {
     clearCanvas();
   };
 
-  // 고급 색상 팔레트 (화이트&블랙 컨셉)
+  // 네온 색상 팔레트 (어두운 배경용)
   const inkColors = [
-    { name: '깊은 먹', color: '#1a1a1a' },
-    { name: '연한 먹', color: '#4a4a4a' },
-    { name: '회색 먹', color: '#6b7280' },
-    { name: '푸른 먹', color: '#1e3a8a' },
-    { name: '붉은 먹', color: '#7f1d1d' },
-    { name: '진한 먹', color: '#000000' }
+    { name: '순백', color: '#FFFFFF' },
+    { name: '네온 옐로우', color: '#FFD700' },
+    { name: '네온 시안', color: '#00FFFF' },
+    { name: '네온 핑크', color: '#FF1493' },
+    { name: '네온 그린', color: '#00FF00' },
+    { name: '네온 오렌지', color: '#FF6600' }
   ];
 
   const brushSizes = [
@@ -127,7 +197,7 @@ export default function DrawPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 relative overflow-hidden">
       {/* 배경 패턴 */}
       <div className="absolute inset-0 opacity-[0.02]">
         <div className="absolute inset-0" style={{
@@ -147,11 +217,11 @@ export default function DrawPage() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="text-center py-8"
         >
-                    <h1 className="text-5xl font-light text-gray-900 mb-2 tracking-wide">
+                    <h1 className="text-5xl font-light text-white mb-2 tracking-wide">
             보이는 것보다 선명한
         </h1>
-          <p className="text-lg text-gray-600 font-light">
-            디지털 편지지에 마음을 담아보세요
+          <p className="text-lg text-gray-300 font-light">
+            디지털 캔버스에 마음을 담아보세요
           </p>
         </motion.div>
 
@@ -202,6 +272,19 @@ export default function DrawPage() {
             title="전체 지우기"
           >
             🗑️
+          </button>
+
+          {/* 전체화면 버튼 */}
+          <button
+            onClick={toggleFullscreen}
+            className={`p-4 rounded-xl shadow-lg border-2 transition-all duration-200 backdrop-blur-sm font-medium ${
+              isFullscreen 
+                ? 'bg-green-100/90 text-green-700 border-green-300' 
+                : 'bg-purple-100/90 text-purple-700 border-purple-300'
+            }`}
+            title={isFullscreen ? '전체화면 종료' : '전체화면 모드'}
+          >
+            {isFullscreen ? '🔲' : '⛶'}
           </button>
         </motion.div>
 
@@ -403,8 +486,11 @@ export default function DrawPage() {
               className="w-full"
             >
               <div className="relative h-full min-h-[calc(100vh-200px)]">
-                {/* 편지지 배경 */}
-                <div className="absolute inset-0 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
+                {/* 디지털 캔버스 배경 */}
+                <div className="absolute inset-0 bg-gray-900 rounded-3xl shadow-2xl border border-gray-700 overflow-hidden"
+                     style={{
+                       boxShadow: '0 0 30px rgba(255, 215, 0, 0.2), inset 0 0 50px rgba(0, 0, 0, 0.5)'
+                     }}>
                   {/* 종이 질감 효과 */}
                   <div className="absolute inset-0 opacity-[0.03]">
                     <div className="w-full h-full" style={{
@@ -439,25 +525,29 @@ export default function DrawPage() {
                   
                                     
 
-                  {/* 편지지 헤더 */}
-                  <div className="relative z-10 p-8 border-b border-gray-100">
+                  {/* 디지털 캔버스 헤더 */}
+                  <div className="relative z-10 p-8 border-b border-gray-700">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        {/* 홀로그램 인디케이터 */}
+                        {/* 네온 인디케이터 */}
                         <motion.div 
                           animate={{ 
                             boxShadow: [
-                              '0 0 10px rgba(59, 130, 246, 0.3)',
-                              '0 0 20px rgba(139, 92, 246, 0.4)',
-                              '0 0 10px rgba(59, 130, 246, 0.3)'
+                              '0 0 10px rgba(255, 215, 0, 0.5)',
+                              '0 0 20px rgba(255, 215, 0, 0.8)',
+                              '0 0 10px rgba(255, 215, 0, 0.5)'
                             ]
                           }}
                           transition={{ duration: 2, repeat: Infinity }}
-                          className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
+                          className="w-3 h-3 rounded-full"
+                          style={{ 
+                            background: '#FFD700',
+                            boxShadow: '0 0 15px #FFD700'
+                          }}
                         />
                         <div>
-                          <h2 className="text-2xl font-light text-gray-900">디지털 편지지</h2>
-                          <p className="text-sm text-gray-500 mt-1">당신의 마음을 자유롭게 표현해보세요</p>
+                          <h2 className="text-2xl font-light text-white">디지털 캔버스</h2>
+                          <p className="text-sm text-gray-300 mt-1">검은 우주에 빛나는 작품을 그려보세요</p>
                         </div>
                       </div>
                       
@@ -465,8 +555,11 @@ export default function DrawPage() {
                       <div className="flex items-center gap-4">
                         {/* 연결 상태 */}
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                          <span className="text-xs text-gray-500">
+                          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} 
+                               style={{
+                                 boxShadow: isConnected ? '0 0 10px #00FF00' : '0 0 10px #FF0000'
+                               }} />
+                          <span className="text-xs text-gray-300">
                             {isConnected ? '연결됨' : '연결 끊김'}
                           </span>
                         </div>
@@ -474,10 +567,10 @@ export default function DrawPage() {
             <button
               onClick={saveDrawing}
               disabled={!isConnected}
-                          className="px-6 py-3 rounded-xl shadow-lg border-2 bg-gray-900 text-white border-gray-700 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium"
+                          className="px-6 py-3 rounded-xl shadow-lg border-2 bg-white text-gray-900 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium"
             >
                           <span className="text-lg">📤</span>
-                          <span className="text-sm">편지 보내기</span>
+                          <span className="text-sm">작품 보내기</span>
             </button>
           </div>
         </div>
@@ -489,12 +582,12 @@ export default function DrawPage() {
                     <div className="relative">
                                 <SignatureCanvas
                         ref={sigCanvasRef}
-                        penColor={isEraserMode ? '#FFFFFF' : brushColor}
+                        penColor={isEraserMode ? '#000000' : brushColor}
                         canvasProps={{
                           className: 'w-full h-full border-0 rounded-lg',
                           style: { 
                             minHeight: 'calc(100vh - 300px)',
-                            background: 'transparent',
+                            background: '#000000',
                             touchAction: 'none',
                             cursor: isEraserMode ? 'crosshair' : 'crosshair'
                           }
