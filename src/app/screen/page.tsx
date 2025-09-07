@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
-import dynamic from 'next/dynamic';
 
 // Three.js 컴포넌트를 동적으로 로드 (SSR 방지) - 에러 방지를 위해 제거
 // const ThreeBackground = dynamic(() => import('@/components/ThreeBackground').catch(() => ({ default: () => null })), {
@@ -37,45 +36,24 @@ export default function ScreenPage() {
   const [messages, setMessages] = useState<FloatingMessage[]>([]);
   const [drawings, setDrawings] = useState<FloatingDrawing[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [windowHeight, setWindowHeight] = useState(800);
+  
+  // 성능 최적화: 최대 표시 개수 제한
+  const MAX_DRAWINGS = 15; // 최대 15개 그림만 표시
+  const MAX_MESSAGES = 10; // 최대 10개 메시지만 표시
 
-  // 종이 충돌 감지 및 쌓임 위치 계산
-  const calculateStackPosition = (newX: number, newY: number, paperWidth: number = 180, paperHeight: number = 70) => {
-    const allPapers = [...messages, ...drawings].filter(item => item.hasLanded);
-    let finalX = newX;
-    let finalY = newY;
-    let stackHeight = 0;
-
-    // 해당 위치 근처에 있는 종이들 찾기
-    const nearbyPapers = allPapers.filter(paper => {
-      const distance = Math.sqrt(
-        Math.pow(paper.x - newX, 2) + Math.pow(paper.finalY - newY, 2)
-      );
-      return distance < 150; // 150px 반경 내의 종이들
-    });
-
-    if (nearbyPapers.length > 0) {
-      // 가장 높은 종이 위에 쌓기
-      const highestPaper = nearbyPapers.reduce((highest, current) => 
-        (current.finalY < highest.finalY) ? current : highest
-      );
-      
-      stackHeight = nearbyPapers.length;
-      finalY = highestPaper.finalY - (paperHeight * 0.7) - (stackHeight * 8); // 70% 겹침 + 쌓임 높이
-      
-      // X 위치도 약간 조정 (완전히 겹치지 않게)
-      finalX = newX + (stackHeight % 3) * 15 - 15; // -15 ~ 15px 범위로 조정
-    }
-
-    return { finalX, finalY, stackHeight };
-  };
+  // 종이 충돌 감지 및 쌓임 위치 계산 (현재 미사용)
+  // const calculateStackPosition = (newX: number, newY: number, paperWidth: number = 180, paperHeight: number = 70) => {
+  //   const allPapers = [...messages, ...drawings].filter(item => item.hasLanded);
+  //   let finalX = newX;
+  //   let finalY = newY;
+  //   let stackHeight = 0;
+  //   // ... 기타 로직
+  //   return { finalX, finalY, stackHeight };
+  // };
 
   // 클라이언트 사이드에서만 실행되도록 보장
   useEffect(() => {
     setIsClient(true);
-    if (typeof window !== 'undefined') {
-      setWindowHeight(window.innerHeight);
-    }
   }, []);
 
   const colors = [
@@ -89,47 +67,89 @@ export default function ScreenPage() {
   const addMessage = (text: string) => {
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 9);
-    const seed = timestamp % 1000;
     
-    const baseX = (seed % 60) + 20;
-    const baseY = windowHeight - 180;
-    const { finalX, finalY, stackHeight } = calculateStackPosition(baseX, baseY);
+    // 완전 랜덤 위치 생성 (timestamp 기반)
+    const seed1 = timestamp % 9973; // 큰 소수
+    const seed2 = (timestamp * 7919) % 9967; // 다른 큰 소수
+    const seed3 = (timestamp * 7901) % 9949; // 또 다른 큰 소수
+    const seed4 = Math.floor(timestamp / 1000) % 9941; // 시간 기반 추가 시드
+    
+    // 완전 분산된 위치 계산
+    const x = ((seed1 * 37 + seed2 * 23 + seed3 * 11 + seed4 * 5) % 85) + 5; // 5% ~ 90%
+    const y = ((seed2 * 59 + seed1 * 29 + seed3 * 13 + seed4 * 9) % 85) + 5; // 5% ~ 90%
     
     const newMessage: FloatingMessage = {
       id: `msg-${timestamp}-${randomSuffix}`,
       text,
-      x: baseX,
-      y: 10,
-      color: colors[seed % colors.length],
+      x: x,
+      y: y,
+      color: colors[seed1 % colors.length],
       hasLanded: false,
-      finalY: finalY,
-      rotation: (seed % 20) - 10 + (stackHeight * 2) // 쌓일수록 약간씩 더 회전
+      finalY: 0,
+      rotation: 0
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => {
+      const updated = [...prev, newMessage];
+      // 성능 최적화: 최대 개수 초과시 오래된 것 제거
+      if (updated.length > MAX_MESSAGES) {
+        return updated.slice(-MAX_MESSAGES);
+      }
+      return updated;
+    });
   };
 
-  const addDrawing = (imageData: string) => {
+  const addDrawing = (imageData: string, savedPosition?: { x: number; y: number; scale: number }) => {
     const timestamp = Date.now();
     const randomSuffix = Math.random().toString(36).substring(2, 9);
-    const seed = timestamp % 1000;
     
-    const baseX = (seed % 60) + 20;
-    const baseY = windowHeight - 200;
-    const { finalX, finalY, stackHeight } = calculateStackPosition(baseX, baseY, 120, 80);
+    let x, y, scale;
+    
+    if (savedPosition) {
+      // 기존 그림의 저장된 위치 사용
+      x = savedPosition.x;
+      y = savedPosition.y;
+      scale = savedPosition.scale;
+      console.log('기존 그림 위치 복원:', { x, y, scale });
+    } else {
+      // 새 그림을 위한 진짜 랜덤 위치 생성
+      const crypto = window.crypto || (window as Window & { msCrypto?: Crypto }).msCrypto;
+      const array = new Uint32Array(4);
+      crypto.getRandomValues(array);
+      
+      // 진짜 랜덤 시드 생성
+      const seed1 = array[0] % 10000;
+      const seed2 = array[1] % 10000; 
+      const seed3 = array[2] % 10000;
+      const seed4 = array[3] % 10000;
+      
+      // 화면 전체에 완전 분산된 위치 계산 (0% ~ 100% 범위)
+      x = (seed1 * 0.01) % 95 + 2.5; // 2.5% ~ 97.5%
+      y = (seed2 * 0.01) % 95 + 2.5; // 2.5% ~ 97.5%
+      scale = (seed3 % 40) / 100 + 0.6; // 0.6 ~ 1.0 배율
+      
+      console.log('새 그림 랜덤 위치 생성:', { x, y, scale, seeds: [seed1, seed2, seed3, seed4] });
+    }
     
     const newDrawing: FloatingDrawing = {
       id: `draw-${timestamp}-${randomSuffix}`,
       imageData,
-      x: baseX,
-      y: 5,
-      scale: ((seed % 30) + 40) / 100,
+      x: x,
+      y: y,
+      scale: scale,
       hasLanded: false,
-      finalY: finalY,
-      rotation: (seed % 30) - 15 + (stackHeight * 3) // 쌓일수록 약간씩 더 회전
+      finalY: 0,
+      rotation: 0
     };
 
-    setDrawings(prev => [...prev, newDrawing]);
+    setDrawings(prev => {
+      const updated = [...prev, newDrawing];
+      // 성능 최적화: 최대 개수 초과시 오래된 것 제거
+      if (updated.length > MAX_DRAWINGS) {
+        return updated.slice(-MAX_DRAWINGS);
+      }
+      return updated;
+    });
   };
 
   // Socket.io 연결 및 실시간 메시지/그림 수신
@@ -147,7 +167,7 @@ export default function ScreenPage() {
 
     socket.on('new-drawing', (data) => {
       console.log('스크린 페이지: 새 그림 수신:', data);
-      addDrawing(data.imageData);
+      addDrawing(data.imageData, data.position);
     });
 
     // 기존 메시지들을 받는 이벤트
@@ -159,10 +179,10 @@ export default function ScreenPage() {
     });
 
     // 기존 그림들을 받는 이벤트
-    socket.on('existing-drawings', (existingDrawings: { id: string; imageData: string; timestamp: string }[]) => {
+    socket.on('existing-drawings', (existingDrawings: { id: string; imageData: string; timestamp: string; position?: { x: number; y: number; scale: number } }[]) => {
       console.log('기존 그림들 수신:', existingDrawings.length);
       existingDrawings.forEach((drawData) => {
-        addDrawing(drawData.imageData);
+        addDrawing(drawData.imageData, drawData.position);
       });
     });
 
@@ -197,12 +217,12 @@ export default function ScreenPage() {
           background: 'radial-gradient(ellipse at center, rgba(255, 255, 0, 0.03) 0%, transparent 70%)',
         }} />
         
-        {/* 별빛 효과 */}
-        {Array.from({ length: 100 }).map((_, i) => {
-          const x = Math.random() * 100;
-          const y = Math.random() * 100;
-          const size = Math.random() * 2 + 0.5;
-          const delay = Math.random() * 5;
+        {/* 별빛 효과 - 성능 최적화로 개수 감소 */}
+        {Array.from({ length: 50 }).map((_, i) => {
+          const x = (i * 37 + 13) % 100;
+          const y = (i * 53 + 23) % 100;
+          const size = (i % 3) + 0.5;
+          const delay = (i % 5);
           
           return (
             <motion.div
@@ -221,7 +241,7 @@ export default function ScreenPage() {
                 scale: [0.5, 1, 0.5],
               }}
               transition={{
-                duration: 3 + Math.random() * 2,
+                duration: 3 + (i % 3),
                 repeat: Infinity,
                 delay: delay,
                 ease: "easeInOut"
@@ -230,8 +250,8 @@ export default function ScreenPage() {
           );
         })}
         
-        {/* 플로팅 네온 파티클 */}
-        {Array.from({ length: 30 }).map((_, i) => {
+        {/* 플로팅 네온 파티클 - 성능 최적화로 개수 감소 */}
+        {Array.from({ length: 15 }).map((_, i) => {
           const seedX = (i * 47) % 100;
           const seedY = (i * 83) % 100;
           const duration = (i % 6) + 8;
@@ -270,34 +290,48 @@ export default function ScreenPage() {
       
       {/* 떠다니는 네온 메시지들 */}
       <AnimatePresence>
-        {messages.map((message) => (
+        {messages.map((message, index) => {
+          // 각 메시지마다 고유한 경로 생성
+          const pathSeed = parseInt(message.id.slice(-6), 36);
+          const path1X = ((pathSeed * 17 + index * 23) % 80) + 10;
+          const path2X = ((pathSeed * 31 + index * 41) % 80) + 10;
+          const path3X = ((pathSeed * 47 + index * 53) % 80) + 10;
+          const path1Y = ((pathSeed * 19 + index * 29) % 80) + 10;
+          const path2Y = ((pathSeed * 37 + index * 43) % 80) + 10;
+          const path3Y = ((pathSeed * 59 + index * 61) % 80) + 10;
+          
+          return (
           <motion.div
             key={message.id}
             initial={{ 
-              scale: 0.8,
+              scale: 0,
               opacity: 0,
-              x: Math.random() * window.innerWidth,
-              y: window.innerHeight + 100
+              x: `${path1X}%`,
+              y: `${path1Y}%`
             }}
             animate={{ 
-              scale: [0.8, 1, 0.9, 1],
-              opacity: [0, 1, 0.8, 1],
+              scale: [0, 1.2, 0.8, 1, 0.9, 1.1, 1],
+              opacity: [0, 1, 0.8, 1, 0.9, 1],
               x: [
-                Math.random() * window.innerWidth,
-                Math.random() * window.innerWidth * 0.8 + window.innerWidth * 0.1,
-                Math.random() * window.innerWidth * 0.6 + window.innerWidth * 0.2,
-                Math.random() * window.innerWidth * 0.8 + window.innerWidth * 0.1
+                `${path1X}%`,
+                `${path2X}%`, 
+                `${path3X}%`,
+                `${((path1X + path2X) / 2) % 90 + 5}%`,
+                `${((path2X + path3X) / 2) % 90 + 5}%`,
+                `${path1X}%`
               ],
               y: [
-                window.innerHeight + 100,
-                Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.2,
-                Math.random() * window.innerHeight * 0.4 + window.innerHeight * 0.3,
-                Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.2
+                `${path1Y}%`,
+                `${path2Y}%`,
+                `${path3Y}%`,
+                `${((path1Y + path2Y) / 2) % 90 + 5}%`,
+                `${((path2Y + path3Y) / 2) % 90 + 5}%`,
+                `${path1Y}%`
               ],
-              rotate: [0, 5, -3, 2, -1]
+              rotate: [0, 15, -10, 20, -8, 12, -5]
             }}
             transition={{
-              duration: 20 + Math.random() * 10,
+              duration: 25 + (index % 15),
               ease: "easeInOut",
               repeat: Infinity,
               repeatType: "reverse"
@@ -329,53 +363,53 @@ export default function ScreenPage() {
                    }} />
             </div>
           </motion.div>
-        ))}
+        );
+        })}
       </AnimatePresence>
 
       {/* 떠다니는 네온 그림들 */}
       <AnimatePresence>
-        {drawings.map((drawing) => (
+        {drawings.map((drawing, index) => {
+          // addDrawing에서 계산한 실제 랜덤 위치 사용
+          const baseX = drawing.x; // 5% ~ 90% 범위
+          const baseY = drawing.y; // 5% ~ 90% 범위
+          
+          // 디버깅: 실제 사용되는 위치 값 확인
+          console.log(`그림 ${index} 애니메이션 위치:`, { 
+            baseX, baseY, 
+            drawingId: drawing.id,
+            isUndefined: baseX === undefined || baseY === undefined 
+          });
+          
+          // 현재는 단순한 부유 애니메이션만 사용 (복잡한 경로 계산은 미사용)
+          
+          return (
           <motion.div
             key={drawing.id}
             initial={{ 
-              scale: 0.5,
+              scale: 0,
               opacity: 0,
-              x: Math.random() * window.innerWidth,
-              y: window.innerHeight + 100,
-              rotate: Math.random() * 360
+              rotate: 0
             }}
             animate={{
-              scale: [0.5, 0.8, 0.6, 0.7, 0.8],
-              opacity: [0, 1, 0.7, 0.9, 1],
-              x: [
-                Math.random() * window.innerWidth,
-                Math.random() * window.innerWidth * 0.7 + window.innerWidth * 0.15,
-                Math.random() * window.innerWidth * 0.5 + window.innerWidth * 0.25,
-                Math.random() * window.innerWidth * 0.7 + window.innerWidth * 0.15,
-                Math.random() * window.innerWidth * 0.8 + window.innerWidth * 0.1
-              ],
-              y: [
-                window.innerHeight + 100,
-                Math.random() * window.innerHeight * 0.5 + window.innerHeight * 0.25,
-                Math.random() * window.innerHeight * 0.3 + window.innerHeight * 0.35,
-                Math.random() * window.innerHeight * 0.4 + window.innerHeight * 0.3,
-                Math.random() * window.innerHeight * 0.6 + window.innerHeight * 0.2
-              ],
-              rotate: [
-                Math.random() * 360,
-                Math.random() * 360 + 180,
-                Math.random() * 360 - 90,
-                Math.random() * 360 + 90,
-                Math.random() * 360
-              ]
+              scale: [0, 1.3, 0.7, drawing.scale, 0.8, 1.1, drawing.scale, 0.9, 1.2, drawing.scale],
+              opacity: [0, 1, 0.6, 1, 0.8, 1, 0.7, 1, 0.9, 1],
+              rotate: [0, 25, -20, 35, -15, 30, -10, 18, -25, 15, 0],
+              x: [0, 20, -15, 30, -25, 35, -10, 25, -20, 0],
+              y: [0, -30, 20, -25, 35, -15, 30, -20, 25, 0]
             }}
             transition={{
-              duration: 25 + Math.random() * 15,
+              duration: 20 + (index % 15), // 속도 최적화
               ease: "easeInOut",
               repeat: Infinity,
-              repeatType: "reverse"
+              repeatType: "reverse",
+              // 개별 속성별 transition 제거로 성능 향상
             }}
             className="absolute pointer-events-none select-none z-15"
+            style={{
+              left: `${baseX}%`,
+              top: `${baseY}%`,
+            }}
           >
             {/* 네온 글로우 그림 */}
             <div className="relative">
@@ -412,7 +446,8 @@ export default function ScreenPage() {
                    }} />
             </div>
           </motion.div>
-        ))}
+        );
+        })}
       </AnimatePresence>
       
       {/* 네온 제목 */}

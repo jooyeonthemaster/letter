@@ -52,22 +52,7 @@ export default function DisplayPage() {
     }, 5000);
   };
 
-  const addDrawing = (imageData: string) => {
-    const newDrawing: FloatingDrawing = {
-      id: `draw-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      imageData,
-      x: Math.random() * 60 + 20, // 20% ~ 80% 범위
-      y: Math.random() * 60 + 20, // 20% ~ 80% 범위
-      scale: Math.random() * 0.4 + 0.6 // 0.6 ~ 1.0 배율 (2배 더 크게)
-    };
-
-    setDrawings(prev => [...prev, newDrawing]);
-
-    // 그림을 제거하지 않고 계속 떠다니게 함
-    // setTimeout(() => {
-    //   setDrawings(prev => prev.filter(draw => draw.id !== newDrawing.id));
-    // }, 8000);
-  };
+  // addDrawing 함수 제거 - screen 페이지에서만 처리
 
   // Socket.io 연결 및 실시간 메시지 수신
   useEffect(() => {

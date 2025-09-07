@@ -69,12 +69,14 @@ app.prepare().then(() => {
 
     // 그림 데이터 이벤트
     socket.on('send-drawing', (data) => {
-      console.log('그림 수신');
+      console.log('그림 수신', data.position ? '(위치 포함)' : '(위치 없음)');
       
       const drawingData = {
         id: Date.now().toString(),
         imageData: data.imageData,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // 위치 정보도 함께 저장
+        position: data.position || null
       };
 
       // 그림 저장 (최대 개수 초과시 오래된 것 제거)

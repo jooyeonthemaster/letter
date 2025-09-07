@@ -49,7 +49,21 @@ export default function DrawPage() {
       // 그리기 도구 및 기능들
   const clearCanvas = () => {
     if (sigCanvasRef.current) {
-      sigCanvasRef.current.clear();
+      try {
+        sigCanvasRef.current.clear();
+      } catch (error) {
+        console.warn('Canvas clear error:', error);
+        // 캔버스 재초기화 시도
+        if (sigCanvasRef.current) {
+          const canvas = sigCanvasRef.current.getCanvas();
+          if (canvas) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+          }
+        }
+      }
     }
   };
 
@@ -100,7 +114,7 @@ export default function DrawPage() {
     }
   };
 
-  // 전체화면 상태 감지
+  // 전체화면 상태 감지 및 아이패드 최적화
   useEffect(() => {
     const handleFullscreenChange = () => {
       const doc = document as Document & {
@@ -108,34 +122,168 @@ export default function DrawPage() {
         mozFullScreenElement?: Element;
       };
       
-      setIsFullscreen(
-        !!(document.fullscreenElement || 
+      const isCurrentlyFullscreen = !!(document.fullscreenElement || 
            doc.webkitFullscreenElement || 
-           doc.mozFullScreenElement)
-      );
+           doc.mozFullScreenElement);
+           
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      // 전체화면 모드에서 iOS Safari 최적화
+      if (isCurrentlyFullscreen) {
+        // HTML과 Body에 강력한 스크롤 방지
+        document.documentElement.style.overflow = 'hidden';
+        document.documentElement.style.position = 'fixed';
+        document.documentElement.style.width = '100%';
+        document.documentElement.style.height = '100%';
+        document.documentElement.style.touchAction = 'none';
+        
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100vh';
+        document.body.style.touchAction = 'none';
+        document.body.style.userSelect = 'none';
+        (document.body.style as unknown as Record<string, string>).WebkitUserSelect = 'none';
+        (document.body.style as unknown as Record<string, string>).WebkitTouchCallout = 'none';
+        (document.body.style as unknown as Record<string, string>).WebkitOverflowScrolling = 'touch';
+        
+        // iOS Safari 전용 높이 설정
+        const updateHeight = () => {
+          document.body.style.height = `${window.innerHeight}px`;
+          document.documentElement.style.height = `${window.innerHeight}px`;
+        };
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        
+        console.log('전체화면 모드: 모든 스크롤 및 터치 이벤트 차단');
+      } else {
+        // 전체화면 해제 시 모든 스타일 복원
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.position = '';
+        document.documentElement.style.width = '';
+        document.documentElement.style.height = '';
+        document.documentElement.style.touchAction = '';
+        
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        document.body.style.touchAction = '';
+        document.body.style.userSelect = '';
+        (document.body.style as unknown as Record<string, string>).WebkitUserSelect = '';
+        (document.body.style as unknown as Record<string, string>).WebkitTouchCallout = '';
+        (document.body.style as unknown as Record<string, string>).WebkitOverflowScrolling = '';
+        
+        window.removeEventListener('resize', () => {});
+        console.log('전체화면 해제: 모든 스타일 복원');
+      }
     };
 
+    // 강력한 전체화면 해제 방지 핸들러
+    const preventAllScrolling = (e: Event) => {
+      if (isFullscreen) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    };
+
+    // 전체화면 상태 변경 이벤트
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    
+    // 모든 스크롤 및 터치 이벤트 차단 (iOS Safari 전용)
+    const eventOptions = { passive: false, capture: true };
+    
+    // 터치 이벤트 차단
+    document.addEventListener('touchstart', preventAllScrolling, eventOptions);
+    document.addEventListener('touchmove', preventAllScrolling, eventOptions);
+    document.addEventListener('touchend', preventAllScrolling, eventOptions);
+    
+    // 스크롤 이벤트 차단  
+    document.addEventListener('scroll', preventAllScrolling, eventOptions);
+    document.addEventListener('wheel', preventAllScrolling, eventOptions);
+    
+    // iOS Safari 제스처 이벤트 차단
+    document.addEventListener('gesturestart', preventAllScrolling, eventOptions);
+    document.addEventListener('gesturechange', preventAllScrolling, eventOptions);
+    document.addEventListener('gestureend', preventAllScrolling, eventOptions);
+    
+    // 키보드 이벤트로 인한 스크롤 방지
+    document.addEventListener('keydown', (e) => {
+      if (isFullscreen && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'PageUp' || e.key === 'PageDown' || e.key === ' ')) {
+        e.preventDefault();
+      }
+    }, eventOptions);
 
     return () => {
+      // 모든 이벤트 리스너 제거
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      
+      // 강화된 이벤트 리스너들 제거
+      document.removeEventListener('touchstart', preventAllScrolling, { capture: true });
+      document.removeEventListener('touchmove', preventAllScrolling, { capture: true });
+      document.removeEventListener('touchend', preventAllScrolling, { capture: true });
+      document.removeEventListener('scroll', preventAllScrolling, { capture: true });
+      document.removeEventListener('wheel', preventAllScrolling, { capture: true });
+      document.removeEventListener('gesturestart', preventAllScrolling, { capture: true });
+      document.removeEventListener('gesturechange', preventAllScrolling, { capture: true });
+      document.removeEventListener('gestureend', preventAllScrolling, { capture: true });
+      
+      // 모든 스타일 복원
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.position = '';
+      document.documentElement.style.width = '';
+      document.documentElement.style.height = '';
+      document.documentElement.style.touchAction = '';
+      
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.body.style.touchAction = '';
+      document.body.style.userSelect = '';
+      (document.body.style as unknown as Record<string, string>).WebkitUserSelect = '';
+      (document.body.style as unknown as Record<string, string>).WebkitTouchCallout = '';
+      (document.body.style as unknown as Record<string, string>).WebkitOverflowScrolling = '';
     };
-  }, []);
+  }, [isFullscreen]);
 
   const saveDrawing = () => {
     if (!sigCanvasRef.current || !isConnected) return;
 
-    const dataURL = sigCanvasRef.current.toDataURL();
-    const socket = connectSocket();
-    socket.emit('send-drawing', { imageData: dataURL });
-    console.log('편지 전송 완료');
+    try {
+      const dataURL = sigCanvasRef.current.toDataURL();
     
-    // 그림 전송 후 캔버스 초기화
-    clearCanvas();
+    // 위치 정보 생성 (crypto API 사용)
+    const crypto = window.crypto || (window as Window & { msCrypto?: Crypto }).msCrypto;
+    const array = new Uint32Array(4);
+    crypto.getRandomValues(array);
+    
+    const position = {
+      x: (array[0] % 9500) / 100 + 2.5, // 2.5% ~ 97.5%
+      y: (array[1] % 9500) / 100 + 2.5, // 2.5% ~ 97.5%
+      scale: (array[2] % 40) / 100 + 0.6 // 0.6 ~ 1.0
+    };
+    
+    const socket = connectSocket();
+    socket.emit('send-drawing', { 
+      imageData: dataURL,
+      position: position
+    });
+      console.log('편지 전송 완료 (위치:', position, ')');
+      
+      // 그림 전송 후 캔버스 초기화
+      clearCanvas();
+    } catch (error) {
+      console.error('그림 저장 중 오류:', error);
+      // 에러 발생 시에도 캔버스는 초기화
+      clearCanvas();
+    }
   };
 
   // 네온 색상 팔레트 (어두운 배경용)
@@ -165,39 +313,57 @@ export default function DrawPage() {
 
   // 책 목록 데이터
   const books = [
-    { id: 1, author: '현기영', authorEng: 'Hyun Ki Young', title: '제주도우다 1', publisher: '창비', year: 2023, quotes: '우린 그때 살아도 살아 있는 걸로 생각 못 했어. 하늘로도 도망 못 가고, 땅으로도 도망갈 데가 없었주.\n먼저 그 참사에 대해서 쓰지 않고서는 다른 글을 쓸 수가 없다는 걸 깨달은 거라.\n그래, 오냐오냐, 이제 그 얘길 해보자!\n빼앗긴 식민지 바다, 그럼에도 제주 바다는 여전히 아름답다.\n하하하, 우린 북도 아니고 남도 아니고, 제주도다!' },
-    { id: 2, author: '성해나', authorEng: 'Haena Sung', title: '혼모노', publisher: '창비', year: 2025, quotes: '스무드\n사람들과 마찬가지로 나 역시도 그런 매끈한 세계를 추앙했다.\n\n혼모노\n가벼워진다. 모든 것에서 놓여나듯. 이제야 진짜 가짜가 된 듯.\n\n구의 집: 갈월동 98번지\n무형의 공간에 선을 더하고 면을 채우고 종국에는 인간까지 집어넣는 일.\n\n우호적 감정\n알렉스, 너무 애쓰지 마요. 애쓰면 더 멀어져.\n\n메탈\n이 시절이 영원할 것처럼 그들은 짙푸른 밤을 내달렸다.' },
-    { id: 3, author: '김초엽', authorEng: 'Kim Choyeop', title: '파견자들', publisher: '퍼블리온', year: 2023, quotes: '자꾸만 나타났다가 흩어지는 풍경이 있다.\n평생 뇌의 한구석을 그 존재에게 내줄 수 있어?\n잘 생각해봐. 네가 정말 하나의 존재인지\n한때는 인간이 갈 수 있고 소유할 수도 있다고 믿었던 먼 곳의 행성으로부터.\n네가 보는 이 풍경은 어때?' },
-    { id: 4, author: '김숨', authorEng: 'Kim Soom', title: '무지개 눈', publisher: '민음사', year: 2025, quotes: '오늘 밤 내 아이들은 새장을 찾아 떠날 거예요\n그녀는 빛을 못 보지만 세상에는 빛이 있어야 한다고 생각한다.\n\n파도를 만지는 남자\n우리가 보았던 것은 바다가 아니라 파도예요.\n\n빨간 집에 사는 소녀\n눈을 감는다는 건 아무도 보고 싶지 않다는 거야.\n\n검은색 양말을 신은 기타리스트\n내 눈雪동자는 떨어지고 있고 녹고 있으며 보고 있다.\n\n무지개 눈\n내게는 보려는 몸짓이 아직 남아 있어.' },
-    { id: 5, author: '전하영', authorEng: 'Jeon Hayoung', title: '시차와 시대착오', publisher: '문학동네', year: 2024, quotes: '검은 일기\n이해할 수 없는 것과는 싸우려 들지 말라, 그것이 내 신조였다.\n\n남쪽에서\n보이지 않아도 쓰이는 어떤 삶을. 어딘가에 존재하는 질서를. 그 깊고 어두운 세계를.\n\n영향\n우리는 모두 언젠가 상처받을 것이다. 우리가 사랑했던 아름다움으로부터······\n\n숙희가 만든 실험영화\n기꺼이 속는 것이야말로 젊은 사람들의 표식이다, 라고 숙희는 생각했다.\n\n경로 이탈\n어릴 적에 들은 짧은 이야기 하나 때문에 그는 나무 그림자를 밟지 않는 사람이 되었다.' },
-    { id: 6, author: '윤은성', authorEng: 'Eunseong Yoon', title: '유리 광장에서', publisher: '도서출판 빠마', year: 2024, quotes: '우재\n너 없이 오직 다짐들과 시간들뿐이네.\n\n둑과 빛과 물의 시\n사라질 것 같으면 돌을 물에 던지듯 이야기를 만들었다\n\n봄 방학\n이번 겨울에는 나의 도시에 한번 다녀가세요.\n\n모르는 일들로부터\n그럼 내 숲의 초록빛도 한 번씩 밖으로 내비춰지고\n\n좁고 긴 옷\n내가 나를 증명하지 않는 것이 노래에 가깝다고 해요' },
-    { id: 7, author: '이수지', authorEng: 'Suzy Lee', title: '춤을 추었어', publisher: '안그라픽스', year: 2024, quotes: '뛰어오르는 물고기\n나비의 날갯짓\n땅 밑 여행\n꽃의 환대\n모두 춤을 추었어' },
-    { id: 8, author: '장이지', authorEng: 'Jang I-Ji', title: '오리배가 지나간 호수의 파랑', publisher: '아침달', year: 2025, quotes: '무지개\n그것이 아직 덜 쓰였다는 점에서 얼마간 지우고 있는 것과 구분할 수 없다\n\n헤어지는 중\n헤어짐은 만남이야, 바보야\n\n혼자만 찬란한 것\n돌아누우면, 아무도 없구나\n\n칠월\n나와 세계를 송두리째 바꾸는 꿈\n\nWhen You Wish Upon A Star\n너와 나 사이에 하얗게 눈이 내려 쌓였으면······' },
-    { id: 9, author: '김성중', authorEng: 'Kim Seong Joong', title: '화성의 아이', publisher: '문학동네', year: 2024, quotes: '장소를 묻는 건 우리가 누구인지 묻는 것과 같아.\n무언가를 간절히 기다리는 마음, 무엇인지도 모르는 채 간절해지기만 하는 마음.\n내 삶은 인간을 사랑하는 것과 사랑하지 않는 것 사이의 투쟁이었다.\n처음부터 나는 그 아이를 사랑하지 않을 자신이 없었다.\n우리는 "애정"이라는 말을 알았고 "그리움"이라는 말도 알았다.' },
-    { id: 10, author: '이금이', authorEng: 'Lee Geum-yi', title: '알로하, 나의 엄마들', publisher: '창비', year: 2020, quotes: "지 결론이 뭔지 압니꺼? 사람은 다 똑같다는 기라예.\n'내 딸은 좋은 시상에서 내보다 나은 삶을 살아야 한다.'\n함께 조선을 떠나온 자신들은 아프게, 기쁘게, 뜨겁게 파도를 넘어서며 살아갈 것이다.\n세상에 멋진 싸움이라는 거이 없다.\n하와이에 산다면 이런 비쯤 아무렇지 않게 맞아야 한다." },
-    { id: 11, author: '이제니', authorEng: 'Lee Jenny', title: '그리하여 흘려 쓴 것들', publisher: '문학과지성사', year: 2019, quotes: '남겨진 이후에\n너는 말할 수 없는 말을 내뱉고 읽히지 않는 문장이 되었다.\n\n지금 우리가 언어로 말하는 여러 가지 이야기들\n꾸며낸 이야기가 가본 적 없는 거리의 풍경을 불러들인다.\n\n밤에 의한 불\n너의 얼굴은 두 번 다시 볼 수 없다는 점에서 아름답고.\n\n나무 공에 의지하여\n너와 나 외에 모든 것이 흐르고 있는 들판이 있다.\n\n발화 연습 문장\n―이미 찢겼지만 다시 찢겨야만 한다\n-보이지 않는 글자를 아무도 모르는 발음으로 읽어 내려갔다.' },
-    { id: 12, author: '황여정', authorEng: 'Hwang Yeo Jung', title: '숨과 입자', publisher: '창비', year: 2024, quotes: '내 안에서 움트고 작동되는 마음이라고 해서 그것의 본질을 다 알 수는 없는 일이다. 의식은 언제나 마음보다 늦다.\n모든 일에는 순서가 있는 법이고, 제삼자의 궁금증 해소가 당자의 애도보다 앞서는 일일 수는 없었다.\n본래 나의 것이 아니었던 것들의 철수.\n나는 살아 있는 사람이 아니라 살아남은 사람이다.\n다가가보는 수밖에 없지 않겠어? 그걸 원한다면.' },
-    { id: 13, author: '강지영', authorEng: 'Kang Ji-young', title: '심여사는 킬러', publisher: '네오픽션', year: 2023, quotes: '이제 나는 보통의 아줌마가 아니다. 킬러다.\n부러진 칼끝이 가슴 어딘가를 건드리는 모양이었다.\n사람은 미치지 않기 위해 어떤 일이든 파고들게 되어 있다.\n스마일입니다.\n우리는 칼이 부딪히는 소리에 발을 맞춰 밀림 같은 세상을 향해 어깨를 늘어뜨리고 걸어 나가야 했다.' },
-    { id: 14, author: '이설야', authorEng: 'Lee Sul Ya', title: '내 얼굴이 도착하지 않았다', publisher: '창비', year: 2022, quotes: '백색 그림자\n오후를 미리 끌고가는 백색 그림자들\n\n봄여름가을겨울\n오늘은 오늘의 마음을 다 쓰겠습니다\n\n저수지\n다 쓰지도 버리지도 못한 어제의 얼굴들\n\n마트료시카\n죽은 지 더 오래된 얼굴들은 더 안쪽 깊은 곳에 있다\n\n물고기 극장\n은어다리를 건너가던 별들이 물고기 극장 위에 떠있다' },
-    { id: 15, author: '우다영', authorEng: 'Woo Dayoung', title: '그러나 누군가는 더 검은 밤을 원한다', publisher: '문학과지성사', year: 2023, quotes: '우리 사이에 칼이 있었네\n우리가 더없이 불완전하고 불확실한 존재라는 것.\n\n태초의 선함에 따르면\n왜 우리는 무언가를 애호하고 무언가를 혐오할까요?\n\n긴 예지\n항상 내가 있는 쪽이 미래야. 나를 선택하면 돼.\n\n기도는 기적의 일부\n지금 미래를 무너뜨리고 있는 건 누구죠?\n\n그러나 누군가는 더 검은 밤을 원한다\n우리는 멋진 이야기 하나를 알게 될 때 우리가 가지고 있던 어설프고 모호한 이야기의 가능성들을 모두 잃어버립니다.' },
-    { id: 16, author: '심보선', authorEng: 'Shim Bo-Seon', title: '네가 봄에 써야지 속으로 생각했던', publisher: '아침달', year: 2025, quotes: '오해\n내 심장은 생을 더듬거리며 엇박자로 달린다\n\n몽상가\n나는 또 다른 꿈을 꾸려고 잠에서 깨나 봐요\n\n그리고\n온갖 형태로 우리를 감쌀 그 환한 고리를\n\n스물\n인생은 스무 번의 낙담 뒤엔 그냥 살아지는 거지\n\n문학 공동체\n여기서부터는 당신이 소설가이건 시인이건 상관없다' },
-    { id: 17, author: '최진영', authorEng: 'Choi Jin young', title: '단 한 사람', publisher: '한겨레출판', year: 2023, quotes: '뛰어난 작품은 일단 사람들을 불편하게 한다는 사실을 모르십니까?\n저렇게 많은 사람이 죽는데 어째서 나는 살아 있지?\n기적이란 그 사람이 어떻게 살아왔느냐를 따지지 않고 룰렛처럼 무작위로 일어났다.\n사랑하는 사람이 생긴다는 건 신에게 구걸할 일이 늘어난다는 것.\n나 또한 한 번뿐인 삶을 사는 단 한 명임을 기억하라고.' },
-    { id: 18, author: '이훤', authorEng: 'Hwon Lee', title: '눈에 덜 띄는', publisher: '마음산책', year: 2024, quotes: '눈에 덜 띄는 것들은 비밀을 품고 있다.\n근데 언어가 원래 조금은 수고스러워야 하는 거 아닌가?\n과거의 텍스트와 이미지 안에서 나는 어떤 식으로든 오해될 거다.\n사랑이 좌표를 옮기며 어떤 면들은 남겨지고 어떤 낯들은 버려진다.\n누구도 영원히 눈에 띌 수는 없다.' },
-    { id: 19, author: '김수우', authorEng: 'Kim Soo Woo', title: '뿌리주의자', publisher: '창비', year: 2021, quotes: '내 방 밖 또 하나의 방이 있다\n하늘 아래 누군가 시를 쓰고 있었다\n최초의 얼굴이 도착했다 가난을 업고 온 커다란 고요\n돌기 푸른 목소리를 냈다 삶은 방향일 뿐이야 무게도 길이도 아니야\n나는 또 어느 우주로 돌아갈 것인가' },
-    { id: 20, author: '옌롄커', authorEng: 'Yan Lianke', authorChi: '阎连科', title: '해가 죽던 날', publisher: '글항아리', year: 2024, quotes: '이제 제 이야기를 시작하겠습니다.\n사람들은 꿈을 믿으면서 현실은 믿지 않았습니다.\n그가 책을 쓰는 것은 사람들이 모두 그 책 속에서 살게 하기 위함이었습니다.\n어두운 낮의 검은색은 어제의 어두운 밤이 넘친 것이었습니다.\n몽유 외부의 깨어 있는 방향을 향해 뛰어가는 것 같았습니다.' },
-    { id: 21, author: '김주혜', authorEng: 'Juhea Kim', title: '밤새들의 도시', publisher: '다산책방', year: 2025, quotes: '그런데 돌이켜 보면, 내가 가장 사랑했던 사람들은 내 약점을 강점으로 바꿔준 이들이었어요.\n인간은 사랑하는 것을 기꺼이 파괴할 수 있으며, 이를 욕망하기까지 한다.\n뭔가를 남겨둘 것인지, 아니면 자신의 모든 것과 자신 그 자체를 예술에 바칠 것인지 예술이 묻는다.\n네가 선택하고, 느낄 수 있다는 걸 느끼고, 네가 할 수 있는 방식대로 사랑하고, 그 결과를 받아들이면 돼. 그게 인생의 전부니까.\n결국 인생이란 모든 게 실수다. 그렇지만 동시에, 그 어느 것도 실수가 아니다.' },
-    { id: 22, author: '마테오 B. 비앙키', authorEng: 'Matteo B. Bianchi', title: '남겨진 자들의 삶', publisher: '문예출판사', year: 2024, quotes: '나는 그들과는 다른 곳에 있다.\n왜 사람들은 남겨진 자들의 고통을 외면하는 것일까?\n그럼에도, 이런 일을 겪고도 살아남은 생존자들.\n고통은 영혼 한구석에 감추어놓은 비밀이었다.\n이별은 수많은 겹으로 이루어진, 끝없는 작별 인사였다.' },
-    { id: 23, author: '아드리앵 파를랑주', authorEng: 'Adrien Parlange', title: '봄은 또 오고', publisher: '봄볕', year: 2024, quotes: '아홉 살의 봄, 마음 맞는 친구와 종일 신나게 놀아.\n열여섯의 봄, 우리는 사랑에 빠져.\n스물넷의 봄, 긴 여행을 해.\n스물여섯의 봄, 더 이상 외롭게 지내지 않아.\n서른둘의 봄, 바다에서 딸에게 첫걸음마를 가르쳐.' },
-    { id: 24, author: '패트릭 드윗', authorEng: 'Patrick deWitt', title: '시스터스 브라더스', publisher: '문학동네', year: 2019, quotes: '한 집안의 이야기가 얼마나 정신 나가고 비뚤어질 수 있는지.\n인생의 많은 것이 그렇듯 이번에도 어쩔 수 없는 거야, 형제.\n모든 종이 소리를 내듯이 모든 마음도 소리를 내지.\n슬픔과 걱정에서 완전히 벗어날 수 있는 사람은 없어.\n사람은 운이라는 막연한 느낌을 갈망한다.' },
-    { id: 25, author: '엘비라 나바로', authorEng: 'Elvira Navarro', title: '토끼들의 섬', publisher: '비채', year: 2024, quotes: '스트리크닌\n모든 일이 너무나 빠르게 벌어지고 있다.\n\n역행\n어떻게 그 일을 잊을 수 있었을까?\n\n파리 근교\n내가 서 있는 곳에서 남쪽을 바라봐도 끝이 보이지 않는다.\n\n지옥의 건축학을 위한 기록\n망상이나 착란이 그려내는 세계는 단지 상상의 평면에서만 일어나는 것이 아니었다.\n\n꼭대기 방\n여자는 창문에서 도시 전체를 내려다볼 수 있다는 점에서 작더라도 꼭대기 층에 있는 방을 택했다.' },
-    { id: 26, author: '후즈키 유미', authorEng: 'Yumi Fuzuki', authorJap: '文月悠光', title: '적절한 세계의 적절할 수밖에 없는 나', publisher: '', year: 0, quotes: '바람을 가르고, 구름을 향해 달려 오르는 나.\n흰 구름 꼭대기를 손으로 짚고,\n가만히 웅크려 앉았다.\n어느 날, 붓에 휩쓸려\n거리로 휙 떨어진다면,\n바람에 부풀어 오른 스커트처럼\n나는 활짝 피어줄 테다.' },
-    { id: 27, author: '요나스 하센 케미리', authorEng: 'Jonas Hassen Khemiri', title: '몬테코어', publisher: '민음사', year: 2024, quotes: '때로 진실의 복잡함이 그가 거짓말을 하게 만든 거였다.\n최상의 초상화는 가장 잘 아는 사람에 의해서 창조된다.\n왜 우리 인간들은 이렇게 작은 삶의 부분들에 대해서는 만족하지 못하는 걸까?\n비극은 종종 스테레오로 한꺼번에 몰려온다.\n무슨 일이 일어나고 있지만 그게 무엇인지 확실히 모른다.' },
-    { id: 28, author: '세라 핀스커', authorEng: 'Sarah Pinsker', title: '언젠가 모든 것은 바다로 떨어진다', publisher: '창비', year: 2025, quotes: '그리고 우리는 어둠 속에 남겨졌다\n우리가 모두 같은 걸 보고 있기는 한 걸까?\n\n기억살이 날\n좋은 기억들도 아픈 거 아닐까요.\n\n언젠가 모든 것은 바다로 떨어진다\n맞아요. 여기서도 여전히 음악이 필요하잖아요, 맞죠?\n\n뒤에 놓인 심연을 알면서도 기쁘게\n그런 우연한 일들로 삶이 만들어졌다.\n\n바람은 방랑하리\n언젠가는 모든 걸 다시 지워야 할지도 몰라요.' },
-    { id: 29, author: '빅토리아 마스', authorEng: 'Victoria Mas', title: '미친 여자들의 무도회', publisher: '문학동네', year: 2023, quotes: '달리 말해서 그녀가 원하는 삶은 그런 삶이 아닌 다른 모든 삶이다.\n아마도 남자들은 여자들을 업신여긴다기보다 오히려 두려워하는 것 같다.\n삶은 이미 충분히 형벌 같은데, 죽은 뒤에도 이 형벌이 지속된다는 말이 터무니없고 부당하게 여겨졌다.\n남자들은 타인에게 광기를 부리지만, 여자들의 광기는 자기 자신을 향한다.\n이 책은······ 내가 미치지 않았다는 사실을 일깨워줬어요.' }
+    { id: 1, author: '현기영', authorEng: 'Hyun Ki Young', title: '제주도우다 1', publisher: '창비', year: 2023, quotes: '"하하하, 우린 북도 아니고 남도 아니고, 제주도다!"' },
+    { id: 2, author: '성해나', authorEng: 'Haena Sung', title: '혼모노', publisher: '창비', year: 2025, quotes: '가벼워진다. 모든 것에서 놓여나듯. 이제야 진짜 가짜가 된 듯.' },
+    { id: 3, author: '김초엽', authorEng: 'Kim Choyeop', title: '파견자들', publisher: '퍼블리온', year: 2023, quotes: '"네가 보는 이 풍경은 어때?"' },
+    { id: 4, author: '김숨', authorEng: 'Kim Soom', title: '무지개 눈', publisher: '민음사', year: 2025, quotes: '우리가 보았던 것은 바다가 아니라 파도예요.' },
+    { id: 5, author: '전하영', authorEng: 'Jeon Hayoung', title: '시차와 시대착오', publisher: '문학동네', year: 2024, quotes: '기꺼이 속는 것이야말로 젊은 사람들의 표식이다, 라고 숙희는 생각했다.' },
+    { id: 6, author: '윤은성', authorEng: 'Eunseong Yoon', title: '유리 광장에서', publisher: '도서출판 빠마', year: 2024, quotes: '내가 나를 증명하지 않는 것이 노래에 가깝다고 해요' },
+    { id: 7, author: '이수지', authorEng: 'Suzy Lee', title: '춤을 추었어', publisher: '안그라픽스', year: 2024, quotes: '모두 춤을 추었어' },
+    { id: 8, author: '장이지', authorEng: 'Jang I-Ji', title: '오리배가 지나간 호수의 파랑', publisher: '아침달', year: 2025, quotes: '나와 세계를 송두리째 바꾸는 꿈' },
+    { id: 9, author: '김성중', authorEng: 'Kim Seong Joong', title: '화성의 아이', publisher: '문학동네', year: 2024, quotes: '내 삶은 인간을 사랑하는 것과 사랑하지 않는 것 사이의 투쟁이었다.' },
+    { id: 10, author: '이금이', authorEng: 'Lee Geum-yi', title: '알로하, 나의 엄마들', publisher: '창비', year: 2020, quotes: '내 딸은 좋은 시상에서 내보다 나은 삶을 살아야 한다.' },
+    { id: 11, author: '이제니', authorEng: 'Lee Jenny', title: '그리하여 흘려 쓴 것들', publisher: '문학과지성사', year: 2019, quotes: '꾸며낸 이야기가 가본 적 없는 거리의 풍경을 불러들인다.' },
+    { id: 12, author: '황여정', authorEng: 'Hwang Yeo Jung', title: '숨과 입자', publisher: '창비', year: 2024, quotes: '"다가가보는 수밖에 없지 않겠어? 그걸 원한다면."' },
+    { id: 13, author: '강지영', authorEng: 'Kang Ji-young', title: '심여사는 킬러', publisher: '네오픽션', year: 2023, quotes: '이제 나는 보통의 아줌마가 아니다. 킬러다.' },
+    { id: 14, author: '이설야', authorEng: 'Lee Sul Ya', title: '내 얼굴이 도착하지 않았다', publisher: '창비', year: 2022, quotes: '오늘은 오늘의 마음을 다 쓰겠습니다' },
+    { id: 15, author: '우다영', authorEng: 'Woo Dayoung', title: '그러나 누군가는 더 검은 밤을 원한다', publisher: '문학과지성사', year: 2023, quotes: '"지금 미래를 무너뜨리고 있는 건 누구죠?"' },
+    { id: 16, author: '심보선', authorEng: 'Shim Bo-Seon', title: '네가 봄에 써야지 속으로 생각했던', publisher: '아침달', year: 2025, quotes: '인생은 스무 번의 낙담 뒤엔 그냥 살아지는 거지' },
+    { id: 17, author: '최진영', authorEng: 'Choi Jin young', title: '단 한 사람', publisher: '한겨레출판', year: 2023, quotes: '나 또한 한 번뿐인 삶을 사는 단 한 명임을 기억하라고.' },
+    { id: 18, author: '이훤', authorEng: 'Hwon Lee', title: '눈에 덜 띄는', publisher: '마음산책', year: 2024, quotes: '눈에 덜 띄는 것들은 비밀을 품고 있다.' },
+    { id: 19, author: '김수우', authorEng: 'Kim Soo Woo', title: '뿌리주의자', publisher: '창비', year: 2021, quotes: '나는 또 어느 우주로 돌아갈 것인가' },
+    { id: 20, author: '옌롄커', authorEng: 'Yan Lianke', title: '해가 죽던 날', publisher: '글항아리', year: 2024, quotes: '이제 제 이야기를 시작하겠습니다.' },
+    { id: 21, author: '김주혜', authorEng: 'Juhea Kim', title: '밤새들의 도시', publisher: '다산책방', year: 2025, quotes: '뭔가를 남겨둘 것인지, 아니면 자신의 모든 것과 자신 그 자체를 예술에 바칠 것인지 예술이 묻는다.' },
+    { id: 22, author: '마테오 B. 비앙키', authorEng: 'Matteo B. Bianchi', title: '남겨진 자들의 삶', publisher: '문예출판사', year: 2024, quotes: '왜 사람들은 남겨진 자들의 고통을 외면하는 것일까?' },
+    { id: 23, author: '아드리앵 파를랑주', authorEng: 'Adrien Parlange', title: '봄은 또 오고', publisher: '봄볕', year: 2024, quotes: '열여섯의 봄, 우리는 사랑에 빠져.' },
+    { id: 24, author: '패트릭 드윗', authorEng: 'Patrick deWitt', title: '시스터스 브라더스', publisher: '문학동네', year: 2019, quotes: '슬픔과 걱정에서 완전히 벗어날 수 있는 사람은 없어.' },
+    { id: 25, author: '엘비라 나바로', authorEng: 'Elvira Navarro', title: '토끼들의 섬', publisher: '비채', year: 2024, quotes: '모든 일이 너무나 빠르게 벌어지고 있다.' },
+    { id: 26, author: '후즈키 유미', authorEng: 'Yumi Fuzuki', title: '적절한 세계의 적절할 수밖에 없는 나', publisher: '', year: 0, quotes: '바람을 가르고, 구름을 향해 달려 오르는 나.' },
+    { id: 27, author: '요나스 하센 케미리', authorEng: 'Jonas Hassen Khemiri', title: '몬테코어', publisher: '민음사', year: 2024, quotes: '무슨 일이 일어나고 있지만 그게 무엇인지 확실히 모른다.' },
+    { id: 28, author: '세라 핀스커', authorEng: 'Sarah Pinsker', title: '언젠가 모든 것은 바다로 떨어진다', publisher: '창비', year: 2025, quotes: '우리가 모두 같은 걸 보고 있기는 한 걸까?' },
+    { id: 29, author: '빅토리아 마스', authorEng: 'Victoria Mas', title: '미친 여자들의 무도회', publisher: '문학동네', year: 2023, quotes: '이 책은······ 내가 미치지 않았다는 사실을 일깨워줬어요.' }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 relative overflow-hidden">
+    <div className={`min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 relative overflow-hidden ${
+      isFullscreen ? 'select-none' : ''
+    }`}
+         style={isFullscreen ? {
+           userSelect: 'none',
+           WebkitUserSelect: 'none',
+           WebkitTouchCallout: 'none',
+           WebkitTapHighlightColor: 'transparent',
+           touchAction: 'none', // 전체화면에서 모든 터치 제스처 차단
+           overscrollBehavior: 'none',
+           overscrollBehaviorX: 'none', 
+           overscrollBehaviorY: 'none',
+           height: '100vh',
+           position: 'fixed',
+           top: 0,
+           left: 0,
+           right: 0,
+           bottom: 0
+         } : {}}>
       {/* 배경 패턴 */}
       <div className="absolute inset-0 opacity-[0.02]">
         <div className="absolute inset-0" style={{
@@ -588,8 +754,28 @@ export default function DrawPage() {
                           style: { 
                             minHeight: 'calc(100vh - 300px)',
                             background: '#000000',
-                            touchAction: 'none',
-                            cursor: isEraserMode ? 'crosshair' : 'crosshair'
+                            touchAction: isFullscreen ? 'none' : 'manipulation', // 전체화면에서는 완전 차단
+                            cursor: isEraserMode ? 'crosshair' : 'crosshair',
+                            userSelect: 'none',
+                            WebkitUserSelect: 'none',
+                            WebkitTouchCallout: 'none',
+                            WebkitTapHighlightColor: 'transparent',
+                            // iOS Safari 전용 속성들
+                            WebkitOverflowScrolling: 'touch',
+                            overscrollBehavior: 'none',
+                            overscrollBehaviorX: 'none',
+                            overscrollBehaviorY: 'none'
+                          },
+                          // 전체화면에서 추가 이벤트 차단
+                          onTouchStart: (e: React.TouchEvent) => {
+                            if (isFullscreen) {
+                              e.stopPropagation(); // 부모로의 이벤트 전파 차단
+                            }
+                          },
+                          onTouchMove: (e: React.TouchEvent) => {
+                            if (isFullscreen) {
+                              e.stopPropagation(); // 부모로의 이벤트 전파 차단
+                            }
                           }
                         }}
                         minWidth={isEraserMode ? eraserSize * 0.8 : brushSize * 0.3}
@@ -599,29 +785,37 @@ export default function DrawPage() {
                         dotSize={isEraserMode ? eraserSize * 0.3 : brushSize * 0.1}
                         backgroundColor="rgba(255,255,255,0)"
                         onBegin={() => {
-                          if (sigCanvasRef.current) {
-                            const canvas = sigCanvasRef.current.getCanvas();
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) {
-                              if (isEraserMode) {
-                                ctx.save();
-                                ctx.globalCompositeOperation = 'destination-out';
-                                ctx.lineWidth = eraserSize;
-                              } else {
-                                ctx.globalCompositeOperation = 'source-over';
-                                ctx.strokeStyle = brushColor;
-                                ctx.lineWidth = brushSize;
+                          try {
+                            if (sigCanvasRef.current) {
+                              const canvas = sigCanvasRef.current.getCanvas();
+                              const ctx = canvas?.getContext('2d');
+                              if (ctx) {
+                                if (isEraserMode) {
+                                  ctx.save();
+                                  ctx.globalCompositeOperation = 'destination-out';
+                                  ctx.lineWidth = eraserSize;
+                                } else {
+                                  ctx.globalCompositeOperation = 'source-over';
+                                  ctx.strokeStyle = brushColor;
+                                  ctx.lineWidth = brushSize;
+                                }
                               }
                             }
+                          } catch (error) {
+                            console.warn('Canvas onBegin error:', error);
                           }
                         }}
                         onEnd={() => {
-                          if (sigCanvasRef.current && isEraserMode) {
-                            const canvas = sigCanvasRef.current.getCanvas();
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) {
-                              ctx.restore();
+                          try {
+                            if (sigCanvasRef.current && isEraserMode) {
+                              const canvas = sigCanvasRef.current.getCanvas();
+                              const ctx = canvas?.getContext('2d');
+                              if (ctx) {
+                                ctx.restore();
+                              }
                             }
+                          } catch (error) {
+                            console.warn('Canvas onEnd error:', error);
                           }
                         }}
                       />
