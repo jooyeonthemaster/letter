@@ -631,41 +631,9 @@ export default function DrawPage() {
           )}
         </AnimatePresence>
 
-        {/* 선택된 책 인용문 영역 (헤더 아래) */}
-        <AnimatePresence>
-          {selectedBook && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="pt-8 pb-4"
-            >
-              <div className="flex-1 max-w-7xl mx-auto w-full px-6">
-                <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-gray-100">
-                  <div className="flex items-start justify-between mb-6">
-                    <div>
-                      <h3 className="text-xl font-medium text-gray-900">{selectedBook.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{selectedBook.author} · {selectedBook.publisher} ({selectedBook.year})</p>
-                    </div>
-                      <button
-                      onClick={() => setSelectedBook(null)}
-                      className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors clickable"
-                      data-modal="close-button"
-            >
-                      ✕
-            </button>
-                  </div>
-                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
-                    {selectedBook.quotes}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* 메인 콘텐츠 */}
-        <div className={`flex-1 max-w-7xl mx-auto w-full px-6 pb-8 ${selectedBook ? 'pt-4' : 'pt-8'}`}>
+        <div className="flex-1 max-w-7xl mx-auto w-full px-6 pb-8 pt-8">
                       {/* 편지지 캔버스 */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -716,28 +684,46 @@ export default function DrawPage() {
                   {/* 디지털 캔버스 헤더 */}
                   <div className="relative z-10 p-8 border-b border-gray-700">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {/* 네온 인디케이터 */}
-                        <motion.div 
-                          animate={{ 
-                            boxShadow: [
-                              '0 0 10px rgba(255, 215, 0, 0.5)',
-                              '0 0 20px rgba(255, 215, 0, 0.8)',
-                              '0 0 10px rgba(255, 215, 0, 0.5)'
-                            ]
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="w-3 h-3 rounded-full"
-                          style={{ 
-                            background: '#FFD700',
-                            boxShadow: '0 0 15px #FFD700'
-                          }}
-                        />
-                        <div>
-                          <h2 className="text-2xl font-light text-white">디지털 캔버스</h2>
-                          <p className="text-sm text-gray-300 mt-1">검은 우주에 빛나는 작품을 그려보세요</p>
+                      {/* 선택된 책 인용구 또는 기본 네온 인디케이터 */}
+                      {selectedBook ? (
+                        <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-gray-100 flex-1 mr-4">
+                          <div className="flex items-start justify-between mb-6">
+                            <div>
+                              <h3 className="text-xl font-medium text-gray-900">{selectedBook.title}</h3>
+                              <p className="text-sm text-gray-600 mt-1">{selectedBook.author} · {selectedBook.publisher} ({selectedBook.year})</p>
+                            </div>
+                            <button
+                              onClick={() => setSelectedBook(null)}
+                              className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors clickable"
+                              data-modal="close-button"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
+                            {selectedBook.quotes}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-4">
+                          {/* 네온 인디케이터 */}
+                          <motion.div 
+                            animate={{ 
+                              boxShadow: [
+                                '0 0 10px rgba(255, 215, 0, 0.5)',
+                                '0 0 20px rgba(255, 215, 0, 0.8)',
+                                '0 0 10px rgba(255, 215, 0, 0.5)'
+                              ]
+                            }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="w-3 h-3 rounded-full"
+                            style={{ 
+                              background: '#FFD700',
+                              boxShadow: '0 0 15px #FFD700'
+                            }}
+                          />
+                        </div>
+                      )}
                       
                       {/* 편지 보내기 버튼 */}
                       <div className="flex items-center gap-4">
@@ -758,7 +744,7 @@ export default function DrawPage() {
                           className="px-6 py-3 rounded-xl shadow-lg border-2 bg-white text-gray-900 border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 font-medium"
             >
                           <span className="text-lg">📤</span>
-                          <span className="text-sm">작품 보내기</span>
+                          <span className="text-sm">편지 보내기</span>
             </button>
           </div>
         </div>
