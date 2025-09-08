@@ -386,90 +386,9 @@ export default function ScreenPage() {
             }}>
           보이는 것보다 선명한
         </h1>
-        <p className="text-xl font-medium"
-           style={{
-             color: '#ffffff',
-             textShadow: `
-               0 0 3px rgba(255, 255, 255, 0.6),
-               0 0 6px rgba(255, 255, 255, 0.4)
-             `,
-             opacity: 0.8
-           }}>
-          여러분의 창작물이 우주를 떠돕니다
-        </p>
       </motion.div>
       
-      {/* 네온 하단 정보 */}
-      <motion.div 
-        className="absolute bottom-8 left-8 text-sm z-30 p-4 rounded-lg"
-        style={{
-          background: 'rgba(255, 255, 255, 0.08)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 0 20px rgba(255, 255, 255, 0.15)'
-        }}
-        animate={{
-          boxShadow: [
-            '0 0 20px rgba(255, 255, 255, 0.15)',
-            '0 0 30px rgba(255, 255, 255, 0.25)',
-            '0 0 20px rgba(255, 255, 255, 0.15)'
-          ]
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
-        <p style={{ 
-          color: '#ffffff', 
-          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)',
-          marginBottom: '8px'
-        }}>
-          💬 터치 페이지에서 메시지 입력
-        </p>
-        <p style={{ 
-          color: '#ffffff', 
-          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)'
-        }}>
-          🎨 그리기 페이지에서 작품 제작
-        </p>
-      </motion.div>
 
-      <motion.div 
-        className="absolute bottom-8 right-8 text-sm z-30 p-4 rounded-lg"
-        style={{
-          background: 'rgba(255, 255, 255, 0.08)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 0 20px rgba(255, 255, 255, 0.15)'
-        }}
-        animate={{
-          boxShadow: [
-            '0 0 20px rgba(255, 255, 255, 0.15)',
-            '0 0 30px rgba(255, 255, 255, 0.25)',
-            '0 0 20px rgba(255, 255, 255, 0.15)'
-          ]
-        }}
-        transition={{
-          duration: 3,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 1.5
-        }}
-      >
-        <p style={{ 
-          color: '#ffffff', 
-          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)',
-          marginBottom: '8px'
-        }}>
-          실시간 인터랙티브 체험
-        </p>
-        <p style={{ 
-          color: '#ffffff', 
-          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)'
-        }}>
-          창작물들이 어둠 속을 떠돕니다
-        </p>
-      </motion.div>
     </div>
   );
 }

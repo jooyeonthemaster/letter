@@ -66,13 +66,6 @@ export default function VideoBackground() {
         </div>
       )}
       
-      {/* 디버그 정보 (개발 중에만 표시) */}
-      {process.env.NODE_ENV === 'development' && isClient && (
-        <div className="absolute top-4 left-4 text-white text-xs bg-black bg-opacity-50 p-2 rounded z-10">
-          <div>배경: JPG 이미지</div>
-          <div>로드됨: {isLoaded ? '예' : '아니오'}</div>
-        </div>
-      )}
     </div>
   );
 }
