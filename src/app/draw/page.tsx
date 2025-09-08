@@ -179,14 +179,35 @@ export default function DrawPage() {
       }
     };
 
-    // 강력한 전체화면 해제 방지 핸들러
-    const preventAllScrolling = (e: Event) => {
-      if (isFullscreen) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return false;
+    // 선택적 스크롤 방지 핸들러 (캔버스와 버튼 영역 제외)
+    const preventScrolling = (e: Event) => {
+      if (!isFullscreen) return;
+      
+      const target = e.target as Element;
+      if (!target) return;
+      
+      // 캔버스 영역에서는 터치 허용 (그리기 기능을 위해)
+      if (target.tagName === 'CANVAS' || target.closest('canvas')) {
+        return;
       }
+      
+      // 버튼이나 클릭 가능한 요소에서는 터치 허용
+      if (target.tagName === 'BUTTON' || 
+          target.closest('button') || 
+          target.closest('[role="button"]') ||
+          target.closest('.clickable')) {
+        return;
+      }
+      
+      // 모달 내부 요소들은 허용
+      if (target.closest('.modal-content') || target.closest('[data-modal]')) {
+        return;
+      }
+      
+      // 그 외의 경우에만 스크롤 방지
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
     };
 
     // 전체화면 상태 변경 이벤트
@@ -194,22 +215,20 @@ export default function DrawPage() {
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     
-    // 모든 스크롤 및 터치 이벤트 차단 (iOS Safari 전용)
+    // 선택적 터치 이벤트 차단 (iOS Safari 전용)
     const eventOptions = { passive: false, capture: true };
     
-    // 터치 이벤트 차단
-    document.addEventListener('touchstart', preventAllScrolling, eventOptions);
-    document.addEventListener('touchmove', preventAllScrolling, eventOptions);
-    document.addEventListener('touchend', preventAllScrolling, eventOptions);
+    // touchmove만 선택적으로 차단 (터치 시작/끝은 허용)
+    document.addEventListener('touchmove', preventScrolling, eventOptions);
     
-    // 스크롤 이벤트 차단  
-    document.addEventListener('scroll', preventAllScrolling, eventOptions);
-    document.addEventListener('wheel', preventAllScrolling, eventOptions);
+    // 스크롤 이벤트는 계속 차단 (전체화면 유지를 위해)
+    document.addEventListener('scroll', preventScrolling, eventOptions);
+    document.addEventListener('wheel', preventScrolling, eventOptions);
     
-    // iOS Safari 제스처 이벤트 차단
-    document.addEventListener('gesturestart', preventAllScrolling, eventOptions);
-    document.addEventListener('gesturechange', preventAllScrolling, eventOptions);
-    document.addEventListener('gestureend', preventAllScrolling, eventOptions);
+    // iOS Safari 제스처 이벤트 차단 (핀치줌 등)
+    document.addEventListener('gesturestart', preventScrolling, eventOptions);
+    document.addEventListener('gesturechange', preventScrolling, eventOptions);
+    document.addEventListener('gestureend', preventScrolling, eventOptions);
     
     // 키보드 이벤트로 인한 스크롤 방지
     document.addEventListener('keydown', (e) => {
@@ -224,15 +243,13 @@ export default function DrawPage() {
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       
-      // 강화된 이벤트 리스너들 제거
-      document.removeEventListener('touchstart', preventAllScrolling, { capture: true });
-      document.removeEventListener('touchmove', preventAllScrolling, { capture: true });
-      document.removeEventListener('touchend', preventAllScrolling, { capture: true });
-      document.removeEventListener('scroll', preventAllScrolling, { capture: true });
-      document.removeEventListener('wheel', preventAllScrolling, { capture: true });
-      document.removeEventListener('gesturestart', preventAllScrolling, { capture: true });
-      document.removeEventListener('gesturechange', preventAllScrolling, { capture: true });
-      document.removeEventListener('gestureend', preventAllScrolling, { capture: true });
+      // 선택적 이벤트 리스너 제거
+      document.removeEventListener('touchmove', preventScrolling, { capture: true });
+      document.removeEventListener('scroll', preventScrolling, { capture: true });
+      document.removeEventListener('wheel', preventScrolling, { capture: true });
+      document.removeEventListener('gesturestart', preventScrolling, { capture: true });
+      document.removeEventListener('gesturechange', preventScrolling, { capture: true });
+      document.removeEventListener('gestureend', preventScrolling, { capture: true });
       
       // 모든 스타일 복원
       document.documentElement.style.overflow = '';
@@ -353,10 +370,11 @@ export default function DrawPage() {
            WebkitUserSelect: 'none',
            WebkitTouchCallout: 'none',
            WebkitTapHighlightColor: 'transparent',
-           touchAction: 'none', // 전체화면에서 모든 터치 제스처 차단
+           touchAction: 'none', // CSS 기반 터치 제스처 차단
            overscrollBehavior: 'none',
            overscrollBehaviorX: 'none', 
            overscrollBehaviorY: 'none',
+           WebkitOverflowScrolling: 'touch', // iOS Safari 전용
            height: '100vh',
            position: 'fixed',
            top: 0,
@@ -398,7 +416,8 @@ export default function DrawPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="fixed top-20 left-6 z-50 space-y-3"
+          className="fixed top-20 left-6 z-50 space-y-3 clickable"
+          data-modal="buttons"
         >
           {/* 도구 패널 버튼 */}
           <button
@@ -468,8 +487,9 @@ export default function DrawPage() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden"
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden modal-content clickable"
                 onClick={(e) => e.stopPropagation()}
+                data-modal="tools"
               >
                 <div className="p-6 border-b border-gray-200">
                   <h2 className="text-xl font-bold text-gray-900">필기 도구</h2>
@@ -579,8 +599,9 @@ export default function DrawPage() {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="absolute top-20 left-1/2 transform -translate-x-1/2 w-full max-w-4xl max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden"
+                className="absolute top-20 left-1/2 transform -translate-x-1/2 w-full max-w-4xl max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden modal-content clickable"
                 onClick={(e) => e.stopPropagation()}
+                data-modal="books"
               >
                 <div className="p-6 border-b border-gray-200">
                   <h2 className="text-2xl font-bold text-gray-900">책 목록</h2>
@@ -626,9 +647,10 @@ export default function DrawPage() {
                       <h3 className="text-xl font-medium text-gray-900">{selectedBook.title}</h3>
                       <p className="text-sm text-gray-600 mt-1">{selectedBook.author} · {selectedBook.publisher} ({selectedBook.year})</p>
                     </div>
-            <button
+                      <button
                       onClick={() => setSelectedBook(null)}
-                      className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors"
+                      className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors clickable"
+                      data-modal="close-button"
             >
                       ✕
             </button>
@@ -766,15 +788,22 @@ export default function DrawPage() {
                             overscrollBehaviorX: 'none',
                             overscrollBehaviorY: 'none'
                           },
-                          // 전체화면에서 추가 이벤트 차단
+                          // 캔버스에서 터치 이벤트 최적화 (그리기 기능 보장)
                           onTouchStart: (e: React.TouchEvent) => {
                             if (isFullscreen) {
-                              e.stopPropagation(); // 부모로의 이벤트 전파 차단
+                              // 캔버스 영역에서는 터치 허용하되 전파는 차단
+                              e.stopPropagation();
                             }
                           },
                           onTouchMove: (e: React.TouchEvent) => {
                             if (isFullscreen) {
-                              e.stopPropagation(); // 부모로의 이벤트 전파 차단
+                              // 그리기 중에는 터치 무브 허용하되 스크롤은 방지
+                              e.stopPropagation();
+                            }
+                          },
+                          onTouchEnd: (e: React.TouchEvent) => {
+                            if (isFullscreen) {
+                              e.stopPropagation();
                             }
                           }
                         }}

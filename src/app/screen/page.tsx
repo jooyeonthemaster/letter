@@ -3,12 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
-
-// Three.js 컴포넌트를 동적으로 로드 (SSR 방지) - 에러 방지를 위해 제거
-// const ThreeBackground = dynamic(() => import('@/components/ThreeBackground').catch(() => ({ default: () => null })), {
-//   ssr: false,
-//   loading: () => null
-// });
+import VideoBackground from '@/components/VideoBackground';
 
 interface FloatingMessage {
   id: string;
@@ -207,86 +202,8 @@ export default function ScreenPage() {
     <div className="min-h-screen bg-black overflow-hidden relative"
          style={{ minHeight: '100vh', height: '100dvh' }}>
       
-      {/* Three.js 3D 배경 - 에러 방지를 위해 임시 제거 */}
-      {/* <ThreeBackground /> */}
-      
-      {/* 몽환적인 우주 배경 효과 */}
-      <div className="absolute inset-0">
-        {/* 우주 먼지 효과 */}
-        <div className="absolute inset-0" style={{
-          background: 'radial-gradient(ellipse at center, rgba(255, 255, 0, 0.03) 0%, transparent 70%)',
-        }} />
-        
-        {/* 별빛 효과 - 성능 최적화로 개수 감소 */}
-        {Array.from({ length: 50 }).map((_, i) => {
-          const x = (i * 37 + 13) % 100;
-          const y = (i * 53 + 23) % 100;
-          const size = (i % 3) + 0.5;
-          const delay = (i % 5);
-          
-          return (
-            <motion.div
-              key={`star-${i}`}
-              className="absolute rounded-full"
-              style={{
-                left: `${x}%`,
-                top: `${y}%`,
-                width: `${size}px`,
-                height: `${size}px`,
-                background: '#FFD700',
-                boxShadow: `0 0 ${size * 4}px #FFD700`,
-              }}
-              animate={{
-                opacity: [0, 1, 0],
-                scale: [0.5, 1, 0.5],
-              }}
-              transition={{
-                duration: 3 + (i % 3),
-                repeat: Infinity,
-                delay: delay,
-                ease: "easeInOut"
-              }}
-            />
-          );
-        })}
-        
-        {/* 플로팅 네온 파티클 - 성능 최적화로 개수 감소 */}
-        {Array.from({ length: 15 }).map((_, i) => {
-          const seedX = (i * 47) % 100;
-          const seedY = (i * 83) % 100;
-          const duration = (i % 6) + 8;
-          const size = (i % 4) + 2;
-          const xMovement = (i * 13) % 40 - 20;
-          const yMovement = (i * 17) % 40 - 20;
-          
-          return (
-            <motion.div
-              key={`particle-${i}`}
-              className="absolute rounded-full"
-              style={{
-                left: `${seedX}%`,
-                top: `${seedY}%`,
-                width: `${size}px`,
-                height: `${size}px`,
-                background: 'rgba(255, 215, 0, 0.6)',
-                boxShadow: `0 0 ${size * 6}px rgba(255, 215, 0, 0.8)`,
-                filter: 'blur(0.5px)',
-              }}
-              animate={{
-                opacity: [0.3, 0.8, 0.3],
-                scale: [0.8, 1.2, 0.8],
-                x: [0, xMovement, -xMovement/2, xMovement],
-                y: [0, yMovement, -yMovement/2, yMovement]
-              }}
-              transition={{
-                duration: duration,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
-          );
-        })}
-      </div>
+      {/* 비디오 배경 효과 */}
+      <VideoBackground />
       
       {/* 떠다니는 네온 메시지들 */}
       <AnimatePresence>
@@ -342,15 +259,15 @@ export default function ScreenPage() {
             <div className="relative">
               <p className="text-2xl font-bold relative z-10 px-4 py-2"
                  style={{
-                   color: '#FFD700',
+                   color: '#ffffff',
                    textShadow: `
-                     0 0 5px #FFD700,
-                     0 0 10px #FFD700,
-                     0 0 15px #FFD700,
-                     0 0 20px #FFD700,
-                     0 0 25px #FFD700
+                     0 0 5px rgba(255, 255, 255, 0.8),
+                     0 0 10px rgba(255, 255, 255, 0.6),
+                     0 0 15px rgba(255, 255, 255, 0.4),
+                     0 0 20px rgba(255, 255, 255, 0.3),
+                     0 0 25px rgba(255, 255, 255, 0.2)
                    `,
-                   filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.8))'
+                   filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.5))'
                  }}>
                 {message.text}
               </p>
@@ -358,7 +275,7 @@ export default function ScreenPage() {
               {/* 추가 글로우 효과 */}
               <div className="absolute inset-0 rounded-lg"
                    style={{
-                     background: 'radial-gradient(ellipse at center, rgba(255, 215, 0, 0.1) 0%, transparent 70%)',
+                     background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.08) 0%, transparent 70%)',
                      filter: 'blur(10px)',
                    }} />
             </div>
@@ -416,7 +333,7 @@ export default function ScreenPage() {
               {/* 외부 글로우 */}
               <div className="absolute inset-0 rounded-lg"
                    style={{
-                     background: 'radial-gradient(ellipse at center, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 50%, transparent 80%)',
+                     background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.08) 50%, transparent 80%)',
                      filter: 'blur(15px)',
                      transform: 'scale(1.5)',
                    }} />
@@ -428,11 +345,11 @@ export default function ScreenPage() {
                 className="relative z-10 rounded-lg w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 object-contain"
                 style={{
                   filter: `
-                    drop-shadow(0 0 10px rgba(255, 215, 0, 0.8))
-                    drop-shadow(0 0 20px rgba(255, 215, 0, 0.6))
-                    drop-shadow(0 0 30px rgba(255, 215, 0, 0.4))
-                    brightness(1.2)
-                    contrast(1.1)
+                    drop-shadow(0 0 10px rgba(255, 255, 255, 0.6))
+                    drop-shadow(0 0 20px rgba(255, 255, 255, 0.4))
+                    drop-shadow(0 0 30px rgba(255, 255, 255, 0.2))
+                    brightness(1.1)
+                    contrast(1.05)
                   `,
                   mixBlendMode: 'screen'
                 }}
@@ -441,7 +358,7 @@ export default function ScreenPage() {
               {/* 내부 글로우 */}
               <div className="absolute inset-0 rounded-lg pointer-events-none"
                    style={{
-                     background: 'radial-gradient(ellipse at center, rgba(255, 215, 0, 0.05) 0%, transparent 60%)',
+                     background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.04) 0%, transparent 60%)',
                      filter: 'blur(5px)',
                    }} />
             </div>
@@ -459,23 +376,24 @@ export default function ScreenPage() {
       >
         <h1 className="text-6xl font-bold mb-4 tracking-wide"
             style={{
-              color: '#FFD700',
+              color: '#ffffff',
               textShadow: `
-                0 0 5px #FFD700,
-                0 0 10px #FFD700
+                0 0 5px rgba(255, 255, 255, 0.8),
+                0 0 10px rgba(255, 255, 255, 0.5),
+                0 0 20px rgba(255, 255, 255, 0.3)
               `,
-              filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.5))'
+              filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.4))'
             }}>
           보이는 것보다 선명한
         </h1>
         <p className="text-xl font-medium"
            style={{
-             color: '#FFD700',
+             color: '#ffffff',
              textShadow: `
-               0 0 3px #FFD700,
-               0 0 6px #FFD700
+               0 0 3px rgba(255, 255, 255, 0.6),
+               0 0 6px rgba(255, 255, 255, 0.4)
              `,
-             opacity: 0.7
+             opacity: 0.8
            }}>
           여러분의 창작물이 우주를 떠돕니다
         </p>
@@ -485,15 +403,15 @@ export default function ScreenPage() {
       <motion.div 
         className="absolute bottom-8 left-8 text-sm z-30 p-4 rounded-lg"
         style={{
-          background: 'rgba(255, 215, 0, 0.1)',
-          border: '1px solid rgba(255, 215, 0, 0.3)',
-          boxShadow: '0 0 20px rgba(255, 215, 0, 0.2)'
+          background: 'rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 0 20px rgba(255, 255, 255, 0.15)'
         }}
         animate={{
           boxShadow: [
-            '0 0 20px rgba(255, 215, 0, 0.2)',
-            '0 0 30px rgba(255, 215, 0, 0.4)',
-            '0 0 20px rgba(255, 215, 0, 0.2)'
+            '0 0 20px rgba(255, 255, 255, 0.15)',
+            '0 0 30px rgba(255, 255, 255, 0.25)',
+            '0 0 20px rgba(255, 255, 255, 0.15)'
           ]
         }}
         transition={{
@@ -503,15 +421,15 @@ export default function ScreenPage() {
         }}
       >
         <p style={{ 
-          color: '#FFD700', 
-          textShadow: '0 0 10px #FFD700',
+          color: '#ffffff', 
+          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)',
           marginBottom: '8px'
         }}>
           💬 터치 페이지에서 메시지 입력
         </p>
         <p style={{ 
-          color: '#FFD700', 
-          textShadow: '0 0 10px #FFD700'
+          color: '#ffffff', 
+          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)'
         }}>
           🎨 그리기 페이지에서 작품 제작
         </p>
@@ -520,15 +438,15 @@ export default function ScreenPage() {
       <motion.div 
         className="absolute bottom-8 right-8 text-sm z-30 p-4 rounded-lg"
         style={{
-          background: 'rgba(255, 215, 0, 0.1)',
-          border: '1px solid rgba(255, 215, 0, 0.3)',
-          boxShadow: '0 0 20px rgba(255, 215, 0, 0.2)'
+          background: 'rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 0 20px rgba(255, 255, 255, 0.15)'
         }}
         animate={{
           boxShadow: [
-            '0 0 20px rgba(255, 215, 0, 0.2)',
-            '0 0 30px rgba(255, 215, 0, 0.4)',
-            '0 0 20px rgba(255, 215, 0, 0.2)'
+            '0 0 20px rgba(255, 255, 255, 0.15)',
+            '0 0 30px rgba(255, 255, 255, 0.25)',
+            '0 0 20px rgba(255, 255, 255, 0.15)'
           ]
         }}
         transition={{
@@ -539,17 +457,17 @@ export default function ScreenPage() {
         }}
       >
         <p style={{ 
-          color: '#FFD700', 
-          textShadow: '0 0 10px #FFD700',
+          color: '#ffffff', 
+          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)',
           marginBottom: '8px'
         }}>
           실시간 인터랙티브 체험
         </p>
         <p style={{ 
-          color: '#FFD700', 
-          textShadow: '0 0 10px #FFD700'
+          color: '#ffffff', 
+          textShadow: '0 0 10px rgba(255, 255, 255, 0.5)'
         }}>
-          창작물들이 우주를 떠돕니다
+          창작물들이 어둠 속을 떠돕니다
         </p>
       </motion.div>
     </div>
