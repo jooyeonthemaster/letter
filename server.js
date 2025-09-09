@@ -262,16 +262,33 @@ app.prepare().then(async () => {
       console.log('스크린 초기화 완료:', new Date(screenClearTimestamp).toISOString());
     });
 
-    // 데이터 카운트 요청 이벤트 (관리자 전용)
+    // 데이터 카운트 요청 이벤트 (관리자 전용) - 단순화 버전
     socket.on('get-data-count', async () => {
-      console.log('관리자가 데이터 카운트 요청');
+      console.log('✅ get-data-count 이벤트 받음 - socket ID:', socket.id);
+      console.log('✅ useFirestore 상태:', useFirestore);
       
-      let messageCount = 0;
-      let drawingCount = 0;
-      let visibleMessageCount = 0;
-      let visibleDrawingCount = 0;
-
       try {
+        console.log('✅ 응답 전송 시작...');
+        
+        // 일단 간단한 응답부터 보내기
+        socket.emit('data-count-result', {
+          total: { messages: 0, drawings: 0 },
+          visible: { messages: 0, drawings: 0 },
+          screenClearTimestamp: null,
+          debug: 'simplified version working'
+        });
+        
+        console.log('✅ 응답 전송 완료');
+        return; // 일단 여기서 리턴하고 복잡한 로직은 나중에
+        
+        let messageCount = 0;
+        let drawingCount = 0;
+        let visibleMessageCount = 0;
+        let visibleDrawingCount = 0;
+
+        console.log('🔍 데이터 조회 시작...');
+        if (useFirestore) {
+          console.log('🔍 Firestore 모드로 데이터 조회 중...');
         if (useFirestore) {
           try {
             // 전체 데이터 수
