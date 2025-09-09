@@ -11,9 +11,6 @@ const nextConfig: NextConfig = {
   },
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
-  experimental: {
-    missingSuspenseWithCSRBailout: false,
-  },
 };
 
 export default nextConfig;
