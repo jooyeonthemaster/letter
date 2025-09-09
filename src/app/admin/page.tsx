@@ -19,14 +19,27 @@ export default function AdminPage() {
   const [dataCount, setDataCount] = useState<DataCount | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
-  // 함수들을 먼저 정의
-  const handleRefreshData = () => {
+  // 함수들을 먼저 정의  
+  const handleRefreshData = (socket?: any) => {
     console.log('데이터 새로고침 요청 시작');
     setIsLoading(true);
-    const socket = connectSocket();
-    socket.emit('get-data-count');
+    setError('');
+    const activeSocket = socket || connectSocket();
+    activeSocket.emit('get-data-count');
     console.log('get-data-count 이벤트 전송됨');
+    
+    // 10초 타임아웃 설정
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        setIsLoading(false);
+        setError('요청 시간 초과: 서버 응답이 없습니다.');
+        console.error('데이터 요청 타임아웃');
+      }
+    }, 10000);
+    
+    return timeoutId;
   };
 
   const handleClearScreen = () => {
@@ -44,16 +57,31 @@ export default function AdminPage() {
   // Socket.io 연결 및 이벤트 처리
   useEffect(() => {
     const socket = connectSocket();
+    let currentTimeoutId: NodeJS.Timeout | null = null;
     
     socket.on('connect', () => {
       console.log('Admin: Socket 연결됨');
-      // 연결되면 즉시 데이터 카운트 요청
-      handleRefreshData();
+      // 연결되면 즉시 데이터 카운트 요청 (기존 socket 재사용)
+      currentTimeoutId = handleRefreshData(socket);
     });
 
-    socket.on('data-count-result', (data: DataCount) => {
+    socket.on('data-count-result', (data: DataCount & { error?: string }) => {
       console.log('데이터 카운트 결과 수신:', data);
-      setDataCount(data);
+      
+      // 타임아웃 클리어
+      if (currentTimeoutId) {
+        clearTimeout(currentTimeoutId);
+        currentTimeoutId = null;
+      }
+      
+      if (data.error) {
+        setError(data.error);
+        setDataCount(null);
+      } else {
+        setDataCount(data);
+        setError('');
+      }
+      
       setLastUpdate(new Date().toLocaleString());
       setIsLoading(false);
     });
@@ -94,7 +122,13 @@ export default function AdminPage() {
             {/* 데이터 현황 */}
             <div className="mb-4 p-4 bg-gray-50 rounded">
               <h3 className="font-semibold mb-2">데이터 현황</h3>
-              {dataCount ? (
+              
+              {error ? (
+                <div className="text-red-500 text-sm bg-red-50 p-3 rounded">
+                  <p className="font-medium">오류 발생:</p>
+                  <p>{error}</p>
+                </div>
+              ) : dataCount ? (
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="font-medium">전체 저장된 데이터:</p>
@@ -115,7 +149,10 @@ export default function AdminPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-gray-500">데이터를 불러오는 중...</p>
+                <div className="flex items-center text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                  <p>데이터를 불러오는 중...</p>
+                </div>
               )}
             </div>
             

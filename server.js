@@ -261,66 +261,83 @@ app.prepare().then(async () => {
       let visibleMessageCount = 0;
       let visibleDrawingCount = 0;
 
-      if (useFirestore) {
-        try {
-          // 전체 데이터 수
-          const allMessagesSnapshot = await getDocs(collection(db, 'messages'));
-          const allDrawingsSnapshot = await getDocs(collection(db, 'drawings'));
-          messageCount = allMessagesSnapshot.size;
-          drawingCount = allDrawingsSnapshot.size;
+      try {
+        if (useFirestore) {
+          try {
+            // 전체 데이터 수
+            const allMessagesSnapshot = await getDocs(collection(db, 'messages'));
+            const allDrawingsSnapshot = await getDocs(collection(db, 'drawings'));
+            messageCount = allMessagesSnapshot.size;
+            drawingCount = allDrawingsSnapshot.size;
 
-          // 현재 화면에 표시되는 데이터 수 (초기화 이후)
+            // 현재 화면에 표시되는 데이터 수 (초기화 이후)
+            if (screenClearTimestamp) {
+              const visibleMessagesQuery = query(
+                messagesCollection, 
+                where('timestamp', '>', new Date(screenClearTimestamp))
+              );
+              const visibleDrawingsQuery = query(
+                drawingsCollection, 
+                where('timestamp', '>', new Date(screenClearTimestamp))
+              );
+              
+              const visibleMessagesSnapshot = await getDocs(visibleMessagesQuery);
+              const visibleDrawingsSnapshot = await getDocs(visibleDrawingsQuery);
+              visibleMessageCount = visibleMessagesSnapshot.size;
+              visibleDrawingCount = visibleDrawingsSnapshot.size;
+            } else {
+              visibleMessageCount = messageCount;
+              visibleDrawingCount = drawingCount;
+            }
+          } catch (error) {
+            console.error('Firestore 카운트 조회 실패:', error);
+            // Firestore 실패 시 메모리 저장소 사용
+            messageCount = storedMessages.length;
+            drawingCount = storedDrawings.length;
+            visibleMessageCount = messageCount;
+            visibleDrawingCount = drawingCount;
+          }
+        } else {
+          // 메모리 저장소에서 카운트
+          messageCount = storedMessages.length;
+          drawingCount = storedDrawings.length;
+          
           if (screenClearTimestamp) {
-            const visibleMessagesQuery = query(
-              messagesCollection, 
-              where('timestamp', '>', new Date(screenClearTimestamp))
-            );
-            const visibleDrawingsQuery = query(
-              drawingsCollection, 
-              where('timestamp', '>', new Date(screenClearTimestamp))
-            );
-            
-            const visibleMessagesSnapshot = await getDocs(visibleMessagesQuery);
-            const visibleDrawingsSnapshot = await getDocs(visibleDrawingsQuery);
-            visibleMessageCount = visibleMessagesSnapshot.size;
-            visibleDrawingCount = visibleDrawingsSnapshot.size;
+            visibleMessageCount = storedMessages.filter(msg => 
+              new Date(msg.timestamp) > new Date(screenClearTimestamp)
+            ).length;
+            visibleDrawingCount = storedDrawings.filter(drawing => 
+              new Date(drawing.timestamp) > new Date(screenClearTimestamp)
+            ).length;
           } else {
             visibleMessageCount = messageCount;
             visibleDrawingCount = drawingCount;
           }
-        } catch (error) {
-          console.error('Firestore 카운트 조회 실패:', error);
         }
-      } else {
-        // 메모리 저장소에서 카운트
-        messageCount = storedMessages.length;
-        drawingCount = storedDrawings.length;
-        
-        if (screenClearTimestamp) {
-          visibleMessageCount = storedMessages.filter(msg => 
-            new Date(msg.timestamp) > new Date(screenClearTimestamp)
-          ).length;
-          visibleDrawingCount = storedDrawings.filter(drawing => 
-            new Date(drawing.timestamp) > new Date(screenClearTimestamp)
-          ).length;
-        } else {
-          visibleMessageCount = messageCount;
-          visibleDrawingCount = drawingCount;
-        }
-      }
 
-      // 관리자에게 카운트 정보 전송
-      socket.emit('data-count-result', {
-        total: {
-          messages: messageCount,
-          drawings: drawingCount
-        },
-        visible: {
-          messages: visibleMessageCount,
-          drawings: visibleDrawingCount
-        },
-        screenClearTimestamp: screenClearTimestamp ? new Date(screenClearTimestamp).toISOString() : null
-      });
+        // 관리자에게 카운트 정보 전송
+        console.log('카운트 결과 전송:', { messageCount, drawingCount, visibleMessageCount, visibleDrawingCount });
+        socket.emit('data-count-result', {
+          total: {
+            messages: messageCount,
+            drawings: drawingCount
+          },
+          visible: {
+            messages: visibleMessageCount,
+            drawings: visibleDrawingCount
+          },
+          screenClearTimestamp: screenClearTimestamp ? new Date(screenClearTimestamp).toISOString() : null
+        });
+      } catch (error) {
+        console.error('데이터 카운트 처리 중 오류:', error);
+        // 에러 발생 시에도 응답 보내기
+        socket.emit('data-count-result', {
+          total: { messages: 0, drawings: 0 },
+          visible: { messages: 0, drawings: 0 },
+          screenClearTimestamp: null,
+          error: '데이터 조회 중 오류가 발생했습니다.'
+        });
+      }
     });
 
     // 연결 해제
