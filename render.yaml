@@ -7,8 +7,6 @@ services:
     startCommand: npm start
     healthCheckPath: /
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: PORT
         value: 10000
       - key: NEXT_PUBLIC_SOCKET_URL
