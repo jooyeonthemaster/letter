@@ -85,6 +85,16 @@ app.prepare().then(async () => {
   // 실시간 통신 이벤트 처리
   io.on('connection', async (socket) => {
     console.log('클라이언트 연결됨:', socket.id);
+    
+    // 테스트 이벤트 - 즉시 응답
+    socket.on('test-connection', () => {
+      console.log('테스트 연결 요청 받음:', socket.id);
+      socket.emit('test-connection-result', { 
+        message: '연결 성공!', 
+        timestamp: new Date().toISOString(),
+        socketId: socket.id 
+      });
+    });
 
     // 새 접속자에게 기존 메시지/그림 전송 (초기화 시점 이후만)
     if (useFirestore) {

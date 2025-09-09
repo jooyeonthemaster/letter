@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
 
 interface DataCount {
@@ -20,6 +20,15 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [connectionTest, setConnectionTest] = useState<string>('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 테스트 연결 함수
+  const handleTestConnection = () => {
+    const socket = connectSocket();
+    socket.emit('test-connection');
+    console.log('테스트 연결 요청 전송');
+  };
 
   // 함수들을 먼저 정의  
   const handleRefreshData = (socket?: any) => {
@@ -27,19 +36,21 @@ export default function AdminPage() {
     setIsLoading(true);
     setError('');
     const activeSocket = socket || connectSocket();
+    
+    // 기존 타임아웃 클리어
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
     activeSocket.emit('get-data-count');
     console.log('get-data-count 이벤트 전송됨');
     
-    // 10초 타임아웃 설정
-    const timeoutId = setTimeout(() => {
-      if (isLoading) {
-        setIsLoading(false);
-        setError('요청 시간 초과: 서버 응답이 없습니다.');
-        console.error('데이터 요청 타임아웃');
-      }
+    // 10초 타임아웃 설정 (useRef 사용)
+    timeoutRef.current = setTimeout(() => {
+      console.error('데이터 요청 타임아웃');
+      setIsLoading(false);
+      setError('요청 시간 초과: 서버 응답이 없습니다. 서버 로그를 확인하세요.');
     }, 10000);
-    
-    return timeoutId;
   };
 
   const handleClearScreen = () => {
@@ -57,21 +68,27 @@ export default function AdminPage() {
   // Socket.io 연결 및 이벤트 처리
   useEffect(() => {
     const socket = connectSocket();
-    let currentTimeoutId: NodeJS.Timeout | null = null;
     
     socket.on('connect', () => {
       console.log('Admin: Socket 연결됨');
+      setConnectionTest('Socket 연결 성공');
       // 연결되면 즉시 데이터 카운트 요청 (기존 socket 재사용)
-      currentTimeoutId = handleRefreshData(socket);
+      handleRefreshData(socket);
+    });
+
+    // 테스트 연결 결과
+    socket.on('test-connection-result', (data: any) => {
+      console.log('테스트 연결 결과:', data);
+      setConnectionTest(`테스트 성공: ${data.message} (${data.socketId})`);
     });
 
     socket.on('data-count-result', (data: DataCount & { error?: string }) => {
       console.log('데이터 카운트 결과 수신:', data);
       
       // 타임아웃 클리어
-      if (currentTimeoutId) {
-        clearTimeout(currentTimeoutId);
-        currentTimeoutId = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
       
       if (data.error) {
@@ -119,6 +136,18 @@ export default function AdminPage() {
               현재 스크린에 표시되는 모든 그림과 메시지를 관리합니다.
             </p>
             
+            {/* 연결 상태 */}
+            <div className="mb-4 p-3 bg-blue-50 rounded text-sm">
+              <h4 className="font-medium mb-1">연결 상태</h4>
+              <p className="text-blue-700">{connectionTest || '연결 확인 중...'}</p>
+              <button 
+                onClick={handleTestConnection}
+                className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                연결 테스트
+              </button>
+            </div>
+
             {/* 데이터 현황 */}
             <div className="mb-4 p-4 bg-gray-50 rounded">
               <h3 className="font-semibold mb-2">데이터 현황</h3>
@@ -127,6 +156,12 @@ export default function AdminPage() {
                 <div className="text-red-500 text-sm bg-red-50 p-3 rounded">
                   <p className="font-medium">오류 발생:</p>
                   <p>{error}</p>
+                  <button 
+                    onClick={() => handleRefreshData()}
+                    className="mt-2 px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    다시 시도
+                  </button>
                 </div>
               ) : dataCount ? (
                 <div className="grid grid-cols-2 gap-4 text-sm">
