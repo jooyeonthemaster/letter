@@ -5,8 +5,13 @@ const { Server } = require('socket.io');
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, addDoc, getDocs, orderBy, limit, query, writeBatch, where } = require('firebase/firestore');
 
-// 환경변수 로드
-require('dotenv').config({ path: '.env.local' });
+// 환경변수 로드 (로컬 개발용, Render에서는 시스템 환경변수 사용)
+try {
+  require('dotenv').config({ path: '.env.local' });
+} catch (error) {
+  // Render 등 배포 환경에서는 .env.local이 없을 수 있음
+  console.log('No .env.local file found, using system environment variables');
+}
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = dev ? 'localhost' : '0.0.0.0';

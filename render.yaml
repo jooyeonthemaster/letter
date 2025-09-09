@@ -11,5 +11,21 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: NEXT_PUBLIC_SOCKET_URL
+        value: https://mediaart2.onrender.com
+      - key: FIREBASE_API_KEY
+        value: AIzaSyBRRd197EOJWDOAEzFpbzGwPPDuyxKapJo
+      - key: FIREBASE_AUTH_DOMAIN
+        value: floor-b25f5.firebaseapp.com
+      - key: FIREBASE_PROJECT_ID
+        value: floor-b25f5
+      - key: FIREBASE_STORAGE_BUCKET
+        value: floor-b25f5.firebasestorage.app
+      - key: FIREBASE_MESSAGING_SENDER_ID
+        value: 1045162394185
+      - key: FIREBASE_APP_ID
+        value: 1:1045162394185:web:b1c8eb0af454afa9c2b598
+      - key: FIREBASE_MEASUREMENT_ID
+        value: G-HPSDXW34S3
     autoDeploy: true
     branch: master
