@@ -96,6 +96,121 @@ app.prepare().then(async () => {
       });
     });
 
+    // 중요: 연결 직후 요청되는 이벤트는 즉시 리스너를 등록해 레이스 컨디션 방지
+    // 데이터 카운트 요청 이벤트 (관리자 전용)
+    socket.on('get-data-count', async () => {
+      console.log('🔵 ========================================');
+      console.log('🔵 get-data-count 이벤트 받음!');
+      console.log('🔵 socket ID:', socket.id);
+      console.log('🔵 useFirestore 상태:', useFirestore);
+      console.log('🔵 ========================================');
+      
+      try {
+        let totalMessages = 0;
+        let totalDrawings = 0;
+        let visibleMessages = 0;
+        let visibleDrawings = 0;
+
+        if (useFirestore) {
+          console.log('📊 Firestore에서 데이터 조회 중...');
+          
+          // 전체 메시지 및 그림 개수 조회
+          const allMessagesQuery = query(messagesCollection);
+          const allDrawingsQuery = query(drawingsCollection);
+          
+          const [allMessagesSnapshot, allDrawingsSnapshot] = await Promise.all([
+            getDocs(allMessagesQuery),
+            getDocs(allDrawingsQuery)
+          ]);
+          
+          totalMessages = allMessagesSnapshot.size;
+          totalDrawings = allDrawingsSnapshot.size;
+          
+          console.log(`📊 전체 데이터: 메시지 ${totalMessages}개, 그림 ${totalDrawings}개`);
+          
+          // 화면에 표시될 데이터 개수 (스크린 초기화 시점 이후)
+          if (screenClearTimestamp) {
+            console.log('📊 스크린 초기화 필터 적용:', new Date(screenClearTimestamp).toISOString());
+            
+            const visibleMessagesQuery = query(
+              messagesCollection, 
+              where('timestamp', '>', new Date(screenClearTimestamp))
+            );
+            const visibleDrawingsQuery = query(
+              drawingsCollection, 
+              where('timestamp', '>', new Date(screenClearTimestamp))
+            );
+            
+            const [visibleMessagesSnapshot, visibleDrawingsSnapshot] = await Promise.all([
+              getDocs(visibleMessagesQuery),
+              getDocs(visibleDrawingsQuery)
+            ]);
+            
+            visibleMessages = visibleMessagesSnapshot.size;
+            visibleDrawings = visibleDrawingsSnapshot.size;
+          } else {
+            // 스크린 초기화가 없었다면 전체 데이터가 화면에 표시됨
+            visibleMessages = totalMessages;
+            visibleDrawings = totalDrawings;
+          }
+          
+          console.log(`📊 화면 표시 데이터: 메시지 ${visibleMessages}개, 그림 ${visibleDrawings}개`);
+          
+        } else {
+          // 메모리 저장소 사용 시
+          console.log('📊 메모리 저장소에서 데이터 조회 중...');
+          
+          totalMessages = storedMessages.length;
+          totalDrawings = storedDrawings.length;
+          
+          if (screenClearTimestamp) {
+            visibleMessages = storedMessages.filter(msg => 
+              new Date(msg.timestamp) > new Date(screenClearTimestamp)
+            ).length;
+            visibleDrawings = storedDrawings.filter(drawing => 
+              new Date(drawing.timestamp) > new Date(screenClearTimestamp)
+            ).length;
+          } else {
+            visibleMessages = totalMessages;
+            visibleDrawings = totalDrawings;
+          }
+          
+          console.log(`📊 메모리 데이터: 전체 메시지 ${totalMessages}개, 그림 ${totalDrawings}개`);
+          console.log(`📊 화면 표시: 메시지 ${visibleMessages}개, 그림 ${visibleDrawings}개`);
+        }
+
+        const result = {
+          total: { 
+            messages: totalMessages, 
+            drawings: totalDrawings 
+          },
+          visible: { 
+            messages: visibleMessages, 
+            drawings: visibleDrawings 
+          },
+          screenClearTimestamp: screenClearTimestamp
+        };
+        
+        console.log('🔵 데이터 카운트 결과:', result);
+        console.log('🔵 data-count-result 이벤트 전송 중...');
+        socket.emit('data-count-result', result);
+        console.log('🔵 data-count-result 이벤트 전송 완료!');
+        
+      } catch (error) {
+        console.error('🔴 ========================================');
+        console.error('🔴 데이터 카운트 처리 중 오류 발생!');
+        console.error('🔴 오류 내용:', error);
+        console.error('🔴 ========================================');
+        socket.emit('data-count-result', {
+          total: { messages: 0, drawings: 0 },
+          visible: { messages: 0, drawings: 0 },
+          screenClearTimestamp: screenClearTimestamp,
+          error: '데이터 조회 중 오류가 발생했습니다: ' + error.message
+        });
+        console.log('🔴 에러 응답 전송 완료');
+      }
+    });
+
     // 새 접속자에게 기존 메시지/그림 전송 (초기화 시점 이후만)
     if (useFirestore) {
       try {
@@ -262,110 +377,6 @@ app.prepare().then(async () => {
       console.log('스크린 초기화 완료:', new Date(screenClearTimestamp).toISOString());
     });
 
-    // 데이터 카운트 요청 이벤트 (관리자 전용) - 단순화 버전
-    socket.on('get-data-count', async () => {
-      console.log('✅ get-data-count 이벤트 받음 - socket ID:', socket.id);
-      console.log('✅ useFirestore 상태:', useFirestore);
-      
-      try {
-        console.log('✅ 응답 전송 시작...');
-        
-        // 일단 간단한 응답부터 보내기
-        socket.emit('data-count-result', {
-          total: { messages: 0, drawings: 0 },
-          visible: { messages: 0, drawings: 0 },
-          screenClearTimestamp: null,
-          debug: 'simplified version working'
-        });
-        
-        console.log('✅ 응답 전송 완료');
-        return; // 일단 여기서 리턴하고 복잡한 로직은 나중에
-        
-        let messageCount = 0;
-        let drawingCount = 0;
-        let visibleMessageCount = 0;
-        let visibleDrawingCount = 0;
-
-        console.log('🔍 데이터 조회 시작...');
-        if (useFirestore) {
-          console.log('🔍 Firestore 모드로 데이터 조회 중...');
-        if (useFirestore) {
-          try {
-            // 전체 데이터 수
-            const allMessagesSnapshot = await getDocs(collection(db, 'messages'));
-            const allDrawingsSnapshot = await getDocs(collection(db, 'drawings'));
-            messageCount = allMessagesSnapshot.size;
-            drawingCount = allDrawingsSnapshot.size;
-
-            // 현재 화면에 표시되는 데이터 수 (초기화 이후)
-            if (screenClearTimestamp) {
-              const visibleMessagesQuery = query(
-                messagesCollection, 
-                where('timestamp', '>', new Date(screenClearTimestamp))
-              );
-              const visibleDrawingsQuery = query(
-                drawingsCollection, 
-                where('timestamp', '>', new Date(screenClearTimestamp))
-              );
-              
-              const visibleMessagesSnapshot = await getDocs(visibleMessagesQuery);
-              const visibleDrawingsSnapshot = await getDocs(visibleDrawingsQuery);
-              visibleMessageCount = visibleMessagesSnapshot.size;
-              visibleDrawingCount = visibleDrawingsSnapshot.size;
-            } else {
-              visibleMessageCount = messageCount;
-              visibleDrawingCount = drawingCount;
-            }
-          } catch (error) {
-            console.error('Firestore 카운트 조회 실패:', error);
-            // Firestore 실패 시 메모리 저장소 사용
-            messageCount = storedMessages.length;
-            drawingCount = storedDrawings.length;
-            visibleMessageCount = messageCount;
-            visibleDrawingCount = drawingCount;
-          }
-        } else {
-          // 메모리 저장소에서 카운트
-          messageCount = storedMessages.length;
-          drawingCount = storedDrawings.length;
-          
-          if (screenClearTimestamp) {
-            visibleMessageCount = storedMessages.filter(msg => 
-              new Date(msg.timestamp) > new Date(screenClearTimestamp)
-            ).length;
-            visibleDrawingCount = storedDrawings.filter(drawing => 
-              new Date(drawing.timestamp) > new Date(screenClearTimestamp)
-            ).length;
-          } else {
-            visibleMessageCount = messageCount;
-            visibleDrawingCount = drawingCount;
-          }
-        }
-
-        // 관리자에게 카운트 정보 전송
-        console.log('카운트 결과 전송:', { messageCount, drawingCount, visibleMessageCount, visibleDrawingCount });
-        socket.emit('data-count-result', {
-          total: {
-            messages: messageCount,
-            drawings: drawingCount
-          },
-          visible: {
-            messages: visibleMessageCount,
-            drawings: visibleDrawingCount
-          },
-          screenClearTimestamp: screenClearTimestamp ? new Date(screenClearTimestamp).toISOString() : null
-        });
-      } catch (error) {
-        console.error('데이터 카운트 처리 중 오류:', error);
-        // 에러 발생 시에도 응답 보내기
-        socket.emit('data-count-result', {
-          total: { messages: 0, drawings: 0 },
-          visible: { messages: 0, drawings: 0 },
-          screenClearTimestamp: null,
-          error: '데이터 조회 중 오류가 발생했습니다.'
-        });
-      }
-    });
 
     // 연결 해제
     socket.on('disconnect', () => {

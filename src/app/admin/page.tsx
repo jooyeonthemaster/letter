@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
+import { Socket } from 'socket.io-client';
 
 interface DataCount {
   total: {
@@ -22,28 +23,92 @@ export default function AdminPage() {
   const [error, setError] = useState<string>('');
   const [connectionTest, setConnectionTest] = useState<string>('');
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   // 테스트 연결 함수
   const handleTestConnection = () => {
-    const socket = connectSocket();
-    socket.emit('test-connection');
-    console.log('테스트 연결 요청 전송');
+    const socket = socketRef.current;
+    
+    // Socket이 유효하고 emit 함수가 존재하는지 확인
+    if (!socket || typeof socket.emit !== 'function') {
+      console.error('Socket이 유효하지 않습니다');
+      setConnectionTest('Socket 연결 오류: Socket이 초기화되지 않았습니다.');
+      return;
+    }
+    
+    // Socket이 연결된 상태인지 확인
+    if (!socket.connected) {
+      console.log('Socket이 연결되지 않음. 연결 후 테스트 시도');
+      setConnectionTest('Socket 연결 중...');
+      
+      // 연결 완료 대기
+      socket.once('connect', () => {
+        console.log('Socket 연결 완료, 테스트 연결 요청 전송');
+        socket.emit('test-connection');
+      });
+      
+      // 연결 오류 처리
+      socket.once('connect_error', (error: Error) => {
+        console.error('Socket 연결 오류:', error);
+        setConnectionTest('Socket 연결 실패: ' + error.message);
+      });
+    } else {
+      // 이미 연결된 상태면 바로 전송
+      socket.emit('test-connection');
+      console.log('테스트 연결 요청 전송');
+    }
   };
 
   // 함수들을 먼저 정의  
-  const handleRefreshData = (socket?: any) => {
+  const handleRefreshData = useCallback(() => {
     console.log('데이터 새로고침 요청 시작');
+    // 중복 요청 방지: 이미 로딩 중이면 무시
+    if (isLoading) {
+      console.log('이미 데이터 새로고침 진행 중이므로 요청 무시');
+      return;
+    }
     setIsLoading(true);
     setError('');
-    const activeSocket = socket || connectSocket();
     
     // 기존 타임아웃 클리어
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     
-    activeSocket.emit('get-data-count');
-    console.log('get-data-count 이벤트 전송됨');
+    const activeSocket = socketRef.current;
+    
+    // Socket이 유효하고 emit 함수가 존재하는지 확인
+    if (!activeSocket || typeof activeSocket.emit !== 'function') {
+      console.error('Socket이 유효하지 않습니다');
+      setIsLoading(false);
+      setError('Socket 연결 오류: Socket이 초기화되지 않았습니다.');
+      return;
+    }
+    
+    // Socket이 연결된 상태인지 확인
+    if (!activeSocket.connected) {
+      console.log('Socket이 연결되지 않음. 연결 대기 중...');
+      
+      // 연결 완료 대기
+      activeSocket.once('connect', () => {
+        console.log('Socket 연결 완료, 데이터 요청 전송');
+        activeSocket.emit('get-data-count');
+      });
+      
+      // 연결 오류 처리
+      activeSocket.once('connect_error', (error: Error) => {
+        console.error('Socket 연결 오류:', error);
+        setIsLoading(false);
+        setError('Socket 연결 실패: ' + error.message);
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      });
+    } else {
+      // 이미 연결된 상태면 바로 전송
+      activeSocket.emit('get-data-count');
+      console.log('get-data-count 이벤트 전송됨');
+    }
     
     // 10초 타임아웃 설정 (useRef 사용)
     timeoutRef.current = setTimeout(() => {
@@ -51,64 +116,139 @@ export default function AdminPage() {
       setIsLoading(false);
       setError('요청 시간 초과: 서버 응답이 없습니다. 서버 로그를 확인하세요.');
     }, 10000);
-  };
+  }, [isLoading]);
 
   const handleClearScreen = () => {
     if (confirm('정말로 스크린을 초기화하시겠습니까? 현재 표시된 모든 그림과 메시지가 화면에서 사라집니다.')) {
-      const socket = connectSocket();
-      socket.emit('clear-screen');
+      const socket = socketRef.current;
       
-      // 초기화 후 데이터 새로고침
-      setTimeout(() => {
-        handleRefreshData();
-      }, 1000);
+      // Socket이 유효하고 emit 함수가 존재하는지 확인
+      if (!socket || typeof socket.emit !== 'function') {
+        console.error('Socket이 유효하지 않습니다');
+        alert('Socket 연결 오류: 스크린을 초기화할 수 없습니다.');
+        return;
+      }
+      
+      // Socket이 연결된 상태인지 확인
+      if (!socket.connected) {
+        console.log('Socket이 연결되지 않음. 연결 후 스크린 초기화 시도');
+        
+        // 연결 완료 대기
+        socket.once('connect', () => {
+          console.log('Socket 연결 완료, 스크린 초기화 전송');
+          socket.emit('clear-screen');
+          
+          // 초기화 후 데이터 새로고침
+          setTimeout(() => {
+            handleRefreshData();
+          }, 1000);
+        });
+        
+        // 연결 오류 처리
+        socket.once('connect_error', (error: Error) => {
+          console.error('Socket 연결 오류:', error);
+          alert('Socket 연결 실패: 스크린을 초기화할 수 없습니다.');
+        });
+      } else {
+        // 이미 연결된 상태면 바로 전송
+        socket.emit('clear-screen');
+        
+        // 초기화 후 데이터 새로고침
+        setTimeout(() => {
+          handleRefreshData();
+        }, 1000);
+      }
     }
   };
 
-  // Socket.io 연결 및 이벤트 처리
+  // Socket.io 연결 및 이벤트 처리 - 완전 재작성 (단순화)
   useEffect(() => {
-    const socket = connectSocket();
+    console.log('🚀 ULTRA SIMPLE Socket.IO - 근본 해결 버전');
     
-    socket.on('connect', () => {
-      console.log('Admin: Socket 연결됨');
-      setConnectionTest('Socket 연결 성공');
-      // 연결되면 즉시 데이터 카운트 요청 (기존 socket 재사용)
-      handleRefreshData(socket);
-    });
-
-    // 테스트 연결 결과
-    socket.on('test-connection-result', (data: any) => {
-      console.log('테스트 연결 결과:', data);
-      setConnectionTest(`테스트 성공: ${data.message} (${data.socketId})`);
-    });
-
-    socket.on('data-count-result', (data: DataCount & { error?: string }) => {
-      console.log('데이터 카운트 결과 수신:', data);
+    let socket: any = null;
+    
+    const initSocket = () => {
+      // 완전 새로운 소켓 생성
+      console.log('🔌 새 소켓 생성 중...');
+      socket = connectSocket();
+      socketRef.current = socket;
       
-      // 타임아웃 클리어
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+      console.log('📡 소켓 생성됨, ID:', socket.id, 'connected:', socket.connected);
+      
+      // 모든 이벤트 리스너를 미리 등록 (연결 전에)
+      console.log('📝 이벤트 리스너 사전 등록 중...');
+      
+      // 연결 완료 이벤트
+      socket.on('connect', () => {
+        console.log('✅ Socket 연결 완료! ID:', socket.id);
+        setConnectionTest('Socket 연결 성공');
+        
+        // 연결 완료 즉시 데이터 요청
+        console.log('📡 연결 완료, 즉시 데이터 요청!');
+        handleRefreshData();
+      });
+      
+      // 테스트 연결 결과
+      socket.on('test-connection-result', (data: any) => {
+        console.log('🧪 테스트 연결 결과:', data);
+        setConnectionTest(`테스트 성공: ${data.message} (${data.socketId})`);
+      });
+      
+      // 데이터 카운트 결과 - 가장 중요!
+      socket.on('data-count-result', (data: DataCount & { error?: string }) => {
+        console.log('🎉🎉🎉 BINGO! data-count-result 드디어 수신!!!');
+        console.log('📊 받은 데이터:', JSON.stringify(data, null, 2));
+        console.log('🆔 현재 소켓 ID:', socket.id);
+        
+        // 타임아웃 클리어
+        if (timeoutRef.current) {
+          console.log('⏰ 타임아웃 클리어됨');
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        
+        if (data.error) {
+          console.log('❌ 데이터에 에러 포함:', data.error);
+          setError(data.error);
+          setDataCount(null);
+        } else {
+          console.log('✅ 데이터 정상 처리 중...');
+          setDataCount(data);
+          setError('');
+        }
+        
+        setLastUpdate(new Date().toLocaleString());
+        setIsLoading(false);
+        console.log('✅ 상태 업데이트 완료!');
+      });
+      
+      // 연결 해제
+      socket.on('disconnect', () => {
+        console.log('🔌 소켓 연결 해제됨');
+        setConnectionTest('연결 해제됨');
+      });
+      
+      console.log('📝 모든 이벤트 리스너 등록 완료!');
+      
+      // 이미 연결되어 있다면 즉시 처리 (중복 호출 방지 위해 즉시 1회만)
+      if (socket.connected) {
+        console.log('⚡ 이미 연결됨! 즉시 데이터 요청');
+        setConnectionTest('Socket 연결 성공');
+        handleRefreshData();
       }
-      
-      if (data.error) {
-        setError(data.error);
-        setDataCount(null);
-      } else {
-        setDataCount(data);
-        setError('');
-      }
-      
-      setLastUpdate(new Date().toLocaleString());
-      setIsLoading(false);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Admin: Socket 연결 해제됨');
-    });
-
+    };
+    
+    // 소켓 초기화
+    initSocket();
+    
+    // 정리 함수
     return () => {
-      disconnectSocket();
+      console.log('🧹 Socket.IO 정리 중...');
+      if (socket) {
+        socket.removeAllListeners();
+        socket.disconnect();
+      }
+      socketRef.current = null;
     };
   }, []);
 
