@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude --version)",
+      "Bash(claude config set planning_mode true)",
+      "Bash(claude config set --global planning_mode true)",
+      "Bash(claude config list)",
+      "Bash(claude auth status)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

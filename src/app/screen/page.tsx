@@ -181,6 +181,17 @@ export default function ScreenPage() {
       });
     });
 
+    // 스크린 초기화 이벤트 수신
+    socket.on('screen-cleared', (data: { timestamp: number; message: string }) => {
+      console.log('스크린 초기화 알림 수신:', data.message);
+      
+      // 현재 화면의 모든 메시지와 그림 제거
+      setMessages([]);
+      setDrawings([]);
+      
+      console.log('스크린 초기화 완료');
+    });
+
     socket.on('disconnect', () => {
       console.log('스크린: Socket 연결 해제됨');
     });

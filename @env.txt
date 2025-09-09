@@ -15,3 +15,20 @@ PORT=3000
 
 # Socket.io 설정
 SOCKET_CORS_ORIGIN=*
+
+# Firebase 설정 (1floor 프로젝트)
+FIREBASE_PROJECT_NAME=1floor
+FIREBASE_PROJECT_ID=floor-b25f5
+FIREBASE_PROJECT_NUMBER=1045162394185
+# 주의: Firebase 콘솔에서 "웹 API 키가 없습니다"라고 표시됨
+# API 키가 필요하면 Firebase 콘솔에서 생성해야 합니다
+FIREBASE_API_KEY=AIzaSyBRRd197EOJWDOAEzFpbzGwPPDuyxKapJo
+FIREBASE_AUTH_DOMAIN=floor-b25f5.firebaseapp.com
+FIREBASE_STORAGE_BUCKET=floor-b25f5.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=1045162394185
+FIREBASE_APP_ID=1:1045162394185:web:b1c8eb0af454afa9c2b598
+FIREBASE_MEASUREMENT_ID=G-HPSDXW34S3
+
+# Firebase Admin SDK (서버용)
+# 주의: 실제 프로덕션에서는 서비스 계정 키를 사용해야 합니다
+FIREBASE_ADMIN_PROJECT_ID=floor-b25f5
