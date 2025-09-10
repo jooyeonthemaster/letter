@@ -14,6 +14,8 @@ interface FloatingMessage {
   hasLanded: boolean;
   finalY: number;
   rotation: number;
+  isRemoving?: boolean;
+  createdAt: number;
 }
 
 interface FloatingDrawing {
@@ -25,6 +27,8 @@ interface FloatingDrawing {
   hasLanded: boolean;
   finalY: number;
   rotation: number;
+  isRemoving?: boolean;
+  createdAt: number;
 }
 
 export default function ScreenPage() {
@@ -33,8 +37,8 @@ export default function ScreenPage() {
   const [isClient, setIsClient] = useState(false);
   
   // 성능 최적화: 최대 표시 개수 제한
-  const MAX_DRAWINGS = 15; // 최대 15개 그림만 표시
-  const MAX_MESSAGES = 10; // 최대 10개 메시지만 표시
+  const MAX_DRAWINGS = 50; // 최대 50개 그림만 표시
+  const MAX_MESSAGES = 50; // 최대 50개 메시지만 표시
 
   // 종이 충돌 감지 및 쌓임 위치 계산 (현재 미사용)
   // const calculateStackPosition = (newX: number, newY: number, paperWidth: number = 180, paperHeight: number = 70) => {
@@ -81,15 +85,39 @@ export default function ScreenPage() {
       color: colors[seed1 % colors.length],
       hasLanded: false,
       finalY: 0,
-      rotation: 0
+      rotation: 0,
+      createdAt: timestamp
     };
 
     setMessages(prev => {
       const updated = [...prev, newMessage];
-      // 성능 최적화: 최대 개수 초과시 오래된 것 제거
+      
+      // 50개 초과시 오래된 것부터 디졸브 애니메이션 시작
       if (updated.length > MAX_MESSAGES) {
-        return updated.slice(-MAX_MESSAGES);
+        const excess = updated.length - MAX_MESSAGES;
+        const oldestItems = updated
+          .filter(msg => !msg.isRemoving)
+          .sort((a, b) => a.createdAt - b.createdAt)
+          .slice(0, excess);
+        
+        // 오래된 항목들에 제거 플래그 설정
+        const withRemovalFlags = updated.map(msg => {
+          if (oldestItems.find(old => old.id === msg.id)) {
+            return { ...msg, isRemoving: true };
+          }
+          return msg;
+        });
+        
+        // 1.5초 후 실제 제거
+        setTimeout(() => {
+          setMessages(current => 
+            current.filter(msg => !oldestItems.find(old => old.id === msg.id))
+          );
+        }, 1500);
+        
+        return withRemovalFlags;
       }
+      
       return updated;
     });
   };
@@ -134,15 +162,39 @@ export default function ScreenPage() {
       scale: scale,
       hasLanded: false,
       finalY: 0,
-      rotation: 0
+      rotation: 0,
+      createdAt: timestamp
     };
 
     setDrawings(prev => {
       const updated = [...prev, newDrawing];
-      // 성능 최적화: 최대 개수 초과시 오래된 것 제거
+      
+      // 50개 초과시 오래된 것부터 디졸브 애니메이션 시작
       if (updated.length > MAX_DRAWINGS) {
-        return updated.slice(-MAX_DRAWINGS);
+        const excess = updated.length - MAX_DRAWINGS;
+        const oldestItems = updated
+          .filter(drawing => !drawing.isRemoving)
+          .sort((a, b) => a.createdAt - b.createdAt)
+          .slice(0, excess);
+        
+        // 오래된 항목들에 제거 플래그 설정
+        const withRemovalFlags = updated.map(drawing => {
+          if (oldestItems.find(old => old.id === drawing.id)) {
+            return { ...drawing, isRemoving: true };
+          }
+          return drawing;
+        });
+        
+        // 1.5초 후 실제 제거
+        setTimeout(() => {
+          setDrawings(current => 
+            current.filter(drawing => !oldestItems.find(old => old.id === drawing.id))
+          );
+        }, 1500);
+        
+        return withRemovalFlags;
       }
+      
       return updated;
     });
   };
@@ -237,7 +289,13 @@ export default function ScreenPage() {
               x: `${path1X}%`,
               y: `${path1Y}%`
             }}
-            animate={{ 
+            animate={message.isRemoving ? {
+              // 디졸브 애니메이션: 오래된 메시지가 서서히 사라짐
+              scale: [1, 0.8, 0.6, 0.3, 0],
+              opacity: [1, 0.8, 0.6, 0.3, 0],
+              rotate: [0, -45, -90, -135, -180],
+              y: [0, 20, 40, 60, 80]
+            } : { 
               scale: [0, 1.2, 0.8, 1, 0.9, 1.1, 1],
               opacity: [0, 1, 0.8, 1, 0.9, 1],
               x: [
@@ -258,7 +316,17 @@ export default function ScreenPage() {
               ],
               rotate: [0, 15, -10, 20, -8, 12, -5]
             }}
-            transition={{
+            exit={{
+              scale: 0,
+              opacity: 0,
+              rotate: -180,
+              y: 100,
+              transition: { duration: 1.5, ease: "easeInOut" }
+            }}
+            transition={message.isRemoving ? {
+              duration: 1.5,
+              ease: "easeInOut"
+            } : {
               duration: 25 + (index % 15),
               ease: "easeInOut",
               repeat: Infinity,
@@ -319,19 +387,35 @@ export default function ScreenPage() {
               opacity: 0,
               rotate: 0
             }}
-            animate={{
+            animate={drawing.isRemoving ? {
+              // 디졸브 애니메이션: 오래된 그림이 서서히 사라짐
+              scale: [drawing.scale, drawing.scale * 0.8, drawing.scale * 0.5, drawing.scale * 0.2, 0],
+              opacity: [1, 0.8, 0.6, 0.3, 0],
+              rotate: [0, 90, 180, 270, 360],
+              x: [0, 30, 60, 90, 120],
+              y: [0, -20, -40, -60, -80]
+            } : {
               scale: [0, 1.3, 0.7, drawing.scale, 0.8, 1.1, drawing.scale, 0.9, 1.2, drawing.scale],
               opacity: [0, 1, 0.6, 1, 0.8, 1, 0.7, 1, 0.9, 1],
               rotate: [0, 25, -20, 35, -15, 30, -10, 18, -25, 15, 0],
               x: [0, 20, -15, 30, -25, 35, -10, 25, -20, 0],
               y: [0, -30, 20, -25, 35, -15, 30, -20, 25, 0]
             }}
-            transition={{
+            exit={{
+              scale: 0,
+              opacity: 0,
+              rotate: 360,
+              y: -100,
+              transition: { duration: 1.5, ease: "easeInOut" }
+            }}
+            transition={drawing.isRemoving ? {
+              duration: 1.5,
+              ease: "easeInOut"
+            } : {
               duration: 20 + (index % 15), // 속도 최적화
               ease: "easeInOut",
               repeat: Infinity,
-              repeatType: "reverse",
-              // 개별 속성별 transition 제거로 성능 향상
+              repeatType: "reverse"
             }}
             className="absolute pointer-events-none select-none z-15"
             style={{
