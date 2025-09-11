@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { connectSocket, disconnectSocket } from '@/lib/socket';
-import VideoBackground from '@/components/VideoBackground';
+import ImageBackground from '@/components/ImageBackground';
 
 interface FloatingMessage {
   id: string;
@@ -37,8 +37,8 @@ export default function ScreenPage() {
   const [isClient, setIsClient] = useState(false);
   
   // 성능 최적화: 최대 표시 개수 제한
-  const MAX_DRAWINGS = 50; // 최대 50개 그림만 표시
-  const MAX_MESSAGES = 50; // 최대 50개 메시지만 표시
+  const MAX_DRAWINGS = 15; // 최대 15개 그림만 표시 (성능 최적화)
+  const MAX_MESSAGES = 15; // 최대 15개 메시지만 표시 (성능 최적화)
 
   // 종이 충돌 감지 및 쌓임 위치 계산 (현재 미사용)
   // const calculateStackPosition = (newX: number, newY: number, paperWidth: number = 180, paperHeight: number = 70) => {
@@ -92,7 +92,7 @@ export default function ScreenPage() {
     setMessages(prev => {
       const updated = [...prev, newMessage];
       
-      // 50개 초과시 오래된 것부터 디졸브 애니메이션 시작
+      // 15개 초과시 오래된 것부터 디졸브 애니메이션 시작
       if (updated.length > MAX_MESSAGES) {
         const excess = updated.length - MAX_MESSAGES;
         const oldestItems = updated
@@ -169,7 +169,7 @@ export default function ScreenPage() {
     setDrawings(prev => {
       const updated = [...prev, newDrawing];
       
-      // 50개 초과시 오래된 것부터 디졸브 애니메이션 시작
+      // 15개 초과시 오래된 것부터 디졸브 애니메이션 시작
       if (updated.length > MAX_DRAWINGS) {
         const excess = updated.length - MAX_DRAWINGS;
         const oldestItems = updated
@@ -265,8 +265,8 @@ export default function ScreenPage() {
     <div className="min-h-screen bg-black overflow-hidden relative"
          style={{ minHeight: '100vh', height: '100dvh' }}>
       
-      {/* 비디오 배경 효과 */}
-      <VideoBackground />
+      {/* 이미지 배경 효과 */}
+      <ImageBackground />
       
       {/* 떠다니는 네온 메시지들 */}
       <AnimatePresence>

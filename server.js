@@ -3,7 +3,7 @@ const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
 const { initializeApp } = require('firebase/app');
-const { getFirestore, collection, addDoc, getDocs, orderBy, limit, query, writeBatch, where } = require('firebase/firestore');
+const { getFirestore, collection, addDoc, getDocs, orderBy, limit, query, writeBatch, where, doc, setDoc, getDoc, Timestamp } = require('firebase/firestore');
 
 // 환경변수 로드 (로컬 개발용, Render에서는 시스템 환경변수 사용)
 try {
@@ -61,17 +61,37 @@ app.prepare().then(async () => {
   // 스크린 초기화 시점 추적
   let screenClearTimestamp = null;
   
-  let db, messagesCollection, drawingsCollection;
+  let db, messagesCollection, drawingsCollection, settingsDoc;
   let useFirestore = false;
   
   try {
     db = getFirestore(app);
     messagesCollection = collection(db, 'messages');
     drawingsCollection = collection(db, 'drawings');
+    settingsDoc = doc(db, 'settings', 'screenClearTimestamp');
     
     // Firestore 연결 테스트
     const testQuery = query(collection(db, 'messages'), limit(1));
     await getDocs(testQuery);
+    
+    // 저장된 스크린 초기화 타임스탬프 로드
+    try {
+      const settingsSnapshot = await getDoc(settingsDoc);
+      if (settingsSnapshot.exists()) {
+        const data = settingsSnapshot.data();
+        // clearedAt은 Firestore Timestamp 객체로 저장됨
+        if (data.clearedAt) {
+          screenClearTimestamp = data.clearedAt; // Firestore Timestamp 객체 그대로 사용
+          console.log('🔄 저장된 스크린 초기화 시점 복원:', screenClearTimestamp.toDate ? screenClearTimestamp.toDate() : screenClearTimestamp);
+        } else {
+          console.log('📝 스크린 초기화 시점 기록 없음 (첫 실행)');
+        }
+      } else {
+        console.log('📝 스크린 초기화 시점 기록 없음 (첫 실행)');
+      }
+    } catch (error) {
+      console.log('⚠️ 스크린 초기화 시점 로드 실패:', error.message);
+    }
     
     useFirestore = true;
     console.log('✅ Firebase 초기화 성공 - Firestore 사용 가능');
@@ -80,7 +100,7 @@ app.prepare().then(async () => {
     useFirestore = false;
   }
   
-  const MAX_STORED_ITEMS = 50;
+  const MAX_STORED_ITEMS = 15; // 성능 최적화를 위해 15개로 제한
 
   // 실시간 통신 이벤트 처리
   io.on('connection', async (socket) => {
@@ -130,15 +150,15 @@ app.prepare().then(async () => {
           
           // 화면에 표시될 데이터 개수 (스크린 초기화 시점 이후)
           if (screenClearTimestamp) {
-            console.log('📊 스크린 초기화 필터 적용:', new Date(screenClearTimestamp).toISOString());
+            console.log('📊 스크린 초기화 필터 적용:', screenClearTimestamp.toDate ? screenClearTimestamp.toDate() : screenClearTimestamp);
             
             const visibleMessagesQuery = query(
               messagesCollection, 
-              where('timestamp', '>', new Date(screenClearTimestamp))
+              where('timestamp', '>', screenClearTimestamp)
             );
             const visibleDrawingsQuery = query(
               drawingsCollection, 
-              where('timestamp', '>', new Date(screenClearTimestamp))
+              where('timestamp', '>', screenClearTimestamp)
             );
             
             const [visibleMessagesSnapshot, visibleDrawingsSnapshot] = await Promise.all([
@@ -164,11 +184,12 @@ app.prepare().then(async () => {
           totalDrawings = storedDrawings.length;
           
           if (screenClearTimestamp) {
+            const clearTime = screenClearTimestamp.toDate ? screenClearTimestamp.toDate() : screenClearTimestamp;
             visibleMessages = storedMessages.filter(msg => 
-              new Date(msg.timestamp) > new Date(screenClearTimestamp)
+              new Date(msg.timestamp) > clearTime
             ).length;
             visibleDrawings = storedDrawings.filter(drawing => 
-              new Date(drawing.timestamp) > new Date(screenClearTimestamp)
+              new Date(drawing.timestamp) > clearTime
             ).length;
           } else {
             visibleMessages = totalMessages;
@@ -219,13 +240,22 @@ app.prepare().then(async () => {
         
         // 스크린 초기화 시점 이후 데이터만 필터링
         if (screenClearTimestamp) {
-          console.log('스크린 초기화 필터 적용:', new Date(screenClearTimestamp).toISOString());
-          messagesQuery = query(messagesCollection, where('timestamp', '>', new Date(screenClearTimestamp)), orderBy('timestamp', 'desc'), limit(MAX_STORED_ITEMS));
-          drawingsQuery = query(drawingsCollection, where('timestamp', '>', new Date(screenClearTimestamp)), orderBy('timestamp', 'desc'), limit(MAX_STORED_ITEMS));
+          console.log('스크린 초기화 필터 적용:', screenClearTimestamp.toDate ? screenClearTimestamp.toDate() : screenClearTimestamp);
+          // Firestore Timestamp 객체를 직접 사용하여 비교
+          messagesQuery = query(messagesCollection, where('timestamp', '>', screenClearTimestamp), orderBy('timestamp', 'desc'), limit(MAX_STORED_ITEMS));
+          drawingsQuery = query(drawingsCollection, where('timestamp', '>', screenClearTimestamp), orderBy('timestamp', 'desc'), limit(MAX_STORED_ITEMS));
         }
         
         const messagesSnapshot = await getDocs(messagesQuery);
         if (!messagesSnapshot.empty) {
+          console.log('🔍 로드된 메시지 확인:');
+          messagesSnapshot.docs.forEach((doc, idx) => {
+            const data = doc.data();
+            const msgTime = data.timestamp.toDate();
+            const clearTime = screenClearTimestamp ? screenClearTimestamp.toDate() : null;
+            console.log(`  ${idx+1}. 메시지 시간: ${msgTime.toISOString()}, 초기화 시간: ${clearTime ? clearTime.toISOString() : 'null'}, 표시여부: ${msgTime > clearTime}`);
+          });
+          
           const existingMessages = messagesSnapshot.docs.map(doc => ({
             id: doc.id,
             text: doc.data().text,
@@ -237,6 +267,14 @@ app.prepare().then(async () => {
 
         const drawingsSnapshot = await getDocs(drawingsQuery);
         if (!drawingsSnapshot.empty) {
+          console.log('🔍 로드된 그림 확인:');
+          drawingsSnapshot.docs.forEach((doc, idx) => {
+            const data = doc.data();
+            const drawTime = data.timestamp.toDate();
+            const clearTime = screenClearTimestamp ? screenClearTimestamp.toDate() : null;
+            console.log(`  ${idx+1}. 그림 시간: ${drawTime.toISOString()}, 초기화 시간: ${clearTime ? clearTime.toISOString() : 'null'}, 표시여부: ${drawTime > clearTime}`);
+          });
+          
           const existingDrawings = drawingsSnapshot.docs.map(doc => ({
             id: doc.id,
             imageData: doc.data().imageData,
@@ -251,11 +289,12 @@ app.prepare().then(async () => {
       }
     } else {
       // 메모리 저장소에서 전송 (초기화 시점 이후만)
-      const filteredMessages = screenClearTimestamp 
-        ? storedMessages.filter(msg => new Date(msg.timestamp) > new Date(screenClearTimestamp))
+      const clearTime = screenClearTimestamp && screenClearTimestamp.toDate ? screenClearTimestamp.toDate() : screenClearTimestamp;
+      const filteredMessages = clearTime 
+        ? storedMessages.filter(msg => new Date(msg.timestamp) > clearTime)
         : storedMessages;
-      const filteredDrawings = screenClearTimestamp 
-        ? storedDrawings.filter(drawing => new Date(drawing.timestamp) > new Date(screenClearTimestamp))
+      const filteredDrawings = clearTime 
+        ? storedDrawings.filter(drawing => new Date(drawing.timestamp) > clearTime)
         : storedDrawings;
         
       if (filteredMessages.length > 0) {
@@ -283,7 +322,7 @@ app.prepare().then(async () => {
           // Firestore에 메시지 저장
           const docRef = await addDoc(messagesCollection, {
             text: data.text,
-            timestamp: new Date()
+            timestamp: Timestamp.now() // Firestore Timestamp 사용
           });
           
           messageData.id = docRef.id;
@@ -330,7 +369,7 @@ app.prepare().then(async () => {
           // Firestore에 그림 저장
           const docRef = await addDoc(drawingsCollection, {
             imageData: data.imageData,
-            timestamp: new Date(),
+            timestamp: Timestamp.now(), // Firestore Timestamp 사용
             position: data.position || null
           });
           
@@ -364,17 +403,32 @@ app.prepare().then(async () => {
     });
 
     // 스크린 초기화 이벤트 (관리자 전용)
-    socket.on('clear-screen', () => {
+    socket.on('clear-screen', async () => {
       console.log('관리자가 스크린 초기화 요청');
-      screenClearTimestamp = Date.now();
+      
+      // Firestore Timestamp 객체로 저장
+      const now = new Date();
+      screenClearTimestamp = Timestamp.fromDate(now);
+      
+      // Firebase에 스크린 초기화 시점 저장 (서버 재시작 대비)
+      if (useFirestore && settingsDoc) {
+        try {
+          await setDoc(settingsDoc, {
+            clearedAt: screenClearTimestamp // Firestore Timestamp로 저장
+          });
+          console.log('✅ 스크린 초기화 시점을 Firebase에 저장');
+        } catch (error) {
+          console.error('⚠️ 스크린 초기화 시점 저장 실패:', error);
+        }
+      }
       
       // 모든 스크린 클라이언트에게 초기화 알림
       io.emit('screen-cleared', {
-        timestamp: screenClearTimestamp,
+        timestamp: now.getTime(), // 클라이언트에는 숫자로 전송
         message: '스크린이 초기화되었습니다'
       });
       
-      console.log('스크린 초기화 완료:', new Date(screenClearTimestamp).toISOString());
+      console.log('스크린 초기화 완료:', now.toISOString());
     });
 
 
